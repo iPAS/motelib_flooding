@@ -1,0 +1,3 @@
+[submodule "motelib"]
+	path = motelib
+	url = https://gitlab.com/ptiwatthanont/motelib.git
