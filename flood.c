@@ -1,8 +1,11 @@
 #include <stdlib.h>
-#include "system.h"
-#include "led.h"
-#include "timer.h"
-#include "radio.h"
+
+#include <motelib/system.h>
+#include <motelib/led.h>
+#include <motelib/timer.h>
+#include <motelib/radio.h>
+#include <motelib/uart.h>
+#include <pt/pt.h>
 
 #define FLOOD_MSG_TYPE  0x01
 #define REPORT_MSG_TYPE 0x22
@@ -35,7 +38,7 @@ void rebroadcast()
 
     msg.seqNo    = currentSeq;
     msg.hopCount = hopCount;    
-    send(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
+    // send(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
 void report_back()
@@ -44,7 +47,7 @@ void report_back()
     
     msg.seqNo    = reportSeq;
     msg.hopCount = hopCount;
-    send(who_sent, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
+    // send(who_sent, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
 void set_besthop(Address source, uint8_t newhop)
@@ -58,7 +61,7 @@ void set_besthop(Address source, uint8_t newhop)
 void reset_besthop()
 {
 //    set_besthop(BROADCAST_ADDR, MAX_HOP);
-    set_besthop(cddParent, cddBestHop);
+    // set_besthop(cddParent, cddBestHop);
 }
 
 void receive(Address source, MessageType type, char *message, uint16_t len) 
@@ -72,20 +75,20 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             // Shortest hop problem
             if (flood->hopCount < bestHop || parent == BROADCAST_ADDR)
             {
-                stopTimer(beatTimer);
-                set_besthop(source, flood->hopCount);               
+                // stopTimer(beatTimer);
+                // set_besthop(source, flood->hopCount);               
             }
             else
             if (source == parent)
             {
-                stopTimer(beatTimer);
+                // stopTimer(beatTimer);
             }
             else                
             {
-                stopTimer(beatTimer);
+                // stopTimer(beatTimer);
                 cddParent  = source;
                 cddBestHop = flood->hopCount;
-                startTimer(beatTimer, ONESHOT, WAIT_PARENT, &reset_besthop); // Re-check that parent exist
+                // startTimer(beatTimer, ONESHOT, WAIT_PARENT, &reset_besthop); // Re-check that parent exist
             }
             	                   
             // Dead or alive seqNo problem	                                   
@@ -95,7 +98,7 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             if (flood->hopCount < MAX_HOP)
             {
                 hopCount = flood->hopCount + 1; 
-                startTimer(delayTimer, ONESHOT, rand()%500, &rebroadcast);
+                // startTimer(delayTimer, ONESHOT, rand()%500, &rebroadcast);
             }
             
         }
@@ -111,7 +114,7 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             who_sent  = source;
             reportSeq = currentSeq;            
             hopCount  = MAX_HOP - flood->hopCount;
-            startTimer(delayTimer, ONESHOT, rand()%500, &report_back); // Start report
+            // startTimer(delayTimer, ONESHOT, rand()%500, &report_back); // Start report
         }
     }
     else
@@ -127,7 +130,7 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             who_sent  = parent;   
             reportSeq = flood->seqNo;     
             hopCount  = flood->hopCount + 1;            
-            startTimer(delayTimer, ONESHOT, rand()%500, &report_back); // Forward report
+            // startTimer(delayTimer, ONESHOT, rand()%500, &report_back); // Forward report
         }
     }
 }
@@ -139,10 +142,10 @@ void boot()
     parent     = BROADCAST_ADDR; // Use invalid parent, why ?    
 
     srand(getAddress());
-    delayTimer = createTimer();
-    setReceiveHandler(receive);    
+    // delayTimer = createTimer();
+    // setReceiveHandler(receive);    
     
     bestHop    = MAX_HOP;
-    beatTimer  = createTimer();
+    // beatTimer  = createTimer();
 }
 
