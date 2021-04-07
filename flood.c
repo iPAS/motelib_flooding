@@ -7,11 +7,13 @@
 #include <motelib/uart.h>
 #include <pt/pt.h>
 
+
 #define FLOOD_MSG_TYPE  0x01
 #define REPORT_MSG_TYPE 0x22
 
 #define MAX_HOP 255
 #define WAIT_PARENT 10000
+
 
 typedef struct flood_msg
 {
@@ -32,13 +34,14 @@ uint8_t  bestHop;
 uint8_t  cddBestHop; // Candidate
 Address  cddParent;
 
+
 void rebroadcast()
 {
     FloodMsg msg;
 
     msg.seqNo    = currentSeq;
     msg.hopCount = hopCount;    
-    // send(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
+    radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
 void report_back()
@@ -47,7 +50,7 @@ void report_back()
     
     msg.seqNo    = reportSeq;
     msg.hopCount = hopCount;
-    // send(who_sent, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
+    radioRequestTx(who_sent, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
 void set_besthop(Address source, uint8_t newhop)
@@ -60,11 +63,12 @@ void set_besthop(Address source, uint8_t newhop)
 
 void reset_besthop()
 {
-//    set_besthop(BROADCAST_ADDR, MAX_HOP);
-    // set_besthop(cddParent, cddBestHop);
+    // set_besthop(BROADCAST_ADDR, MAX_HOP);
+    set_besthop(cddParent, cddBestHop);
 }
 
-void receive(Address source, MessageType type, char *message, uint16_t len) 
+
+void on_receive(Address source, MessageType type, void *message, uint8_t len) 
 {
     FloodMsg *flood = (FloodMsg*)message;   
     
@@ -75,20 +79,20 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             // Shortest hop problem
             if (flood->hopCount < bestHop || parent == BROADCAST_ADDR)
             {
-                // stopTimer(beatTimer);
-                // set_besthop(source, flood->hopCount);               
+                timerStop(&beatTimer);
+                set_besthop(source, flood->hopCount);               
             }
             else
             if (source == parent)
             {
-                // stopTimer(beatTimer);
+                timerStop(&beatTimer);
             }
             else                
             {
-                // stopTimer(beatTimer);
+                timerStop(&beatTimer);
                 cddParent  = source;
                 cddBestHop = flood->hopCount;
-                // startTimer(beatTimer, ONESHOT, WAIT_PARENT, &reset_besthop); // Re-check that parent exist
+                timerStart(&beatTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop); // Re-check that parent exist
             }
             	                   
             // Dead or alive seqNo problem	                                   
@@ -98,7 +102,7 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             if (flood->hopCount < MAX_HOP)
             {
                 hopCount = flood->hopCount + 1; 
-                // startTimer(delayTimer, ONESHOT, rand()%500, &rebroadcast);
+                timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
             }
             
         }
@@ -114,7 +118,7 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             who_sent  = source;
             reportSeq = currentSeq;            
             hopCount  = MAX_HOP - flood->hopCount;
-            // startTimer(delayTimer, ONESHOT, rand()%500, &report_back); // Start report
+            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Start report
         }
     }
     else
@@ -130,10 +134,11 @@ void receive(Address source, MessageType type, char *message, uint16_t len)
             who_sent  = parent;   
             reportSeq = flood->seqNo;     
             hopCount  = flood->hopCount + 1;            
-            // startTimer(delayTimer, ONESHOT, rand()%500, &report_back); // Forward report
+            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report
         }
     }
 }
+
 
 void boot() 
 {
@@ -142,10 +147,9 @@ void boot()
     parent     = BROADCAST_ADDR; // Use invalid parent, why ?    
 
     srand(getAddress());
-    // delayTimer = createTimer();
-    // setReceiveHandler(receive);    
+    timerCreate(&delayTimer);
+    radioSetRxHandler(on_receive);    
     
     bestHop    = MAX_HOP;
-    // beatTimer  = createTimer();
+    timerCreate(&beatTimer);
 }
-
