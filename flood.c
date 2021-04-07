@@ -40,14 +40,14 @@ void rebroadcast()
     FloodMsg msg;
 
     msg.seqNo    = currentSeq;
-    msg.hopCount = hopCount;    
+    msg.hopCount = hopCount;
     radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
 void report_back()
 {
     FloodMsg msg;
-    
+
     msg.seqNo    = reportSeq;
     msg.hopCount = hopCount;
     radioRequestTx(who_sent, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
@@ -56,9 +56,9 @@ void report_back()
 void set_besthop(Address source, uint8_t newhop)
 {
     debug("Change parent from %d to %d", parent, source);
-    parent  = source;    
+    parent  = source;
     bestHop = newhop;
-    debug("NEW best hop %d", bestHop);                         
+    debug("NEW best hop %d", bestHop);
 }
 
 void reset_besthop()
@@ -68,43 +68,43 @@ void reset_besthop()
 }
 
 
-void on_receive(Address source, MessageType type, void *message, uint8_t len) 
+void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
-    FloodMsg *flood = (FloodMsg*)message;   
-    
+    FloodMsg *flood = (FloodMsg*)message;
+
     if (type == FLOOD_MSG_TYPE)
     {
         if (flood->seqNo > currentSeq)
-        {        
+        {
             // Shortest hop problem
             if (flood->hopCount < bestHop || parent == BROADCAST_ADDR)
             {
                 timerStop(&beatTimer);
-                set_besthop(source, flood->hopCount);               
+                set_besthop(source, flood->hopCount);
             }
             else
             if (source == parent)
             {
                 timerStop(&beatTimer);
             }
-            else                
+            else
             {
                 timerStop(&beatTimer);
                 cddParent  = source;
                 cddBestHop = flood->hopCount;
                 timerStart(&beatTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop); // Re-check that parent exist
             }
-            	                   
-            // Dead or alive seqNo problem	                                   
+
+            // Dead or alive seqNo problem
             debug("Change sequence from %d to %d", currentSeq, flood->seqNo);
             currentSeq = flood->seqNo;
-            
+
             if (flood->hopCount < MAX_HOP)
             {
-                hopCount = flood->hopCount + 1; 
+                hopCount = flood->hopCount + 1;
                 timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
             }
-            
+
         }
         else
         if (flood->seqNo == currentSeq)
@@ -112,11 +112,11 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 //            debug("Dup SeqNO %d from %d", flood->seqNo, source);
         }
         else
-        {   
+        {
             // Dead or alive seqNo problem
             debug("Report SeqNO %d < %d to %d", flood->seqNo, currentSeq, source);
             who_sent  = source;
-            reportSeq = currentSeq;            
+            reportSeq = currentSeq;
             hopCount  = MAX_HOP - flood->hopCount;
             timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Start report
         }
@@ -124,32 +124,32 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     else
     if (type == REPORT_MSG_TYPE) // Dead or alive seqNo problem
     {
-        if (flood->hopCount < MAX_HOP       && 
-            flood->seqNo    > currentSeq    && 
+        if (flood->hopCount < MAX_HOP       &&
+            flood->seqNo    > currentSeq    &&
             source != BROADCAST_ADDR        &&
             parent != BROADCAST_ADDR)
         {
             debug("Report forward from %d to %d", source, parent);
-        
-            who_sent  = parent;   
-            reportSeq = flood->seqNo;     
-            hopCount  = flood->hopCount + 1;            
+
+            who_sent  = parent;
+            reportSeq = flood->seqNo;
+            hopCount  = flood->hopCount + 1;
             timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report
         }
     }
 }
 
 
-void boot() 
+void boot()
 {
     currentSeq = 0;
-    hopCount   = MAX_HOP;    
-    parent     = BROADCAST_ADDR; // Use invalid parent, why ?    
+    hopCount   = MAX_HOP;
+    parent     = BROADCAST_ADDR; // Use invalid parent, why ?
 
     srand(getAddress());
     timerCreate(&delayTimer);
-    radioSetRxHandler(on_receive);    
-    
+    radioSetRxHandler(on_receive);
+
     bestHop    = MAX_HOP;
     timerCreate(&beatTimer);
 }
