@@ -109,7 +109,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         else
         if (flood->seqNo == currentSeq)
         {
-//            debug("Dup SeqNO %d from %d", flood->seqNo, source);
+           debug("Dup SeqNO %d from %d", flood->seqNo, source);
         }
         else
         {

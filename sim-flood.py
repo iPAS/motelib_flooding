@@ -5,7 +5,7 @@ import random
 from time import sleep
 
 from threading import Thread
-sim_port = ''
+sim_port = 3333
 sequence = 0
 gw       = None
 
@@ -189,16 +189,15 @@ def myScript():
                 
 ###################################
 sim = Simulator()
-sim.addNode( MyGateway((50,50)), (50,50) )
+sim.addNode( MyGateway(), (50,50) )
 
 for x in xrange(5):
     for y in xrange(5):
-        pos = (100+x*75+random.randint(0,20), 100+y*75+random.randint(0,20))
-#        sim.addNode( MyMote('build/sim/sim-flood-simple.elf', pos) )
-        sim.addNode( MyMote('build/sim/flood.elf', pos), pos )
+        pos = (100 + x*75 + random.randint(0,20),
+               100 + y*75 + random.randint(0,20))
+        sim.addNode( MyMote('build/sim/flood.elf'), pos )
 
 sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
 raw_input('Press ENTER key to start...'); sleep(3)
 
-sim.run(bootMotes=False, extScript=myScript)
-
+sim.run(bootMotes=False, script=myScript)
