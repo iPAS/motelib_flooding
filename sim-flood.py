@@ -5,30 +5,38 @@ import random
 from time import sleep
 
 from threading import Thread
-sim_port = 3333
+
+
+sim_port = ''
 sequence = 0
 gw       = None
 
 
 ###################################
 class MyGateway(Gateway):
+
+    ###################
     def debug(self, msg):
         if msg.find('Gateway starts listening on port') >= 0:
             txt = msg.split(' ')
             global sim_port
             sim_port = txt[5]
-            global gw
-#            gw = GW('localhost:' + sim_port) # Could't connect from here. Why ?
-        elif msg.find('Report from') >= 0:
-            txt = msg.split(' ')
-            seqno = int(txt[5])
-            global sequence
-            if seqno > sequence:
-                set_sequence(seqno)
-        else:
-            Gateway.debug(self, msg)
+            # global gw
+            # gw = GW('localhost:' + sim_port)  # Could't connect from here. Why ?  --> Do it in the script
 
+        # elif msg.find('Report from') >= 0:
+        #     txt = msg.split(' ')
+        #     seqno = int(txt[5])
+        #     global sequence
+        #     if seqno > sequence:
+        #         set_sequence(seqno)
+
+        Gateway.debug(self, msg)
+
+    ###################
     def receiveRadioMsg(self, msg):
+        self.debug('Received message..')
+
         addr_from = msg[0]+msg[1]*256
         addr_to   = msg[2]+msg[3]*256
         msg_type  = msg[4]
@@ -43,6 +51,8 @@ class MyGateway(Gateway):
 
 ###################################
 class MyMote(Mote):
+
+    ###################
     def debug(self, msg):
         txt = msg.split(' ')
 
@@ -67,12 +77,14 @@ class MyMote(Mote):
         else:
             Mote.debug(self, msg)
 
+    ###################
     def boot(self):
         self.seqno   = 0
         self.besthop = 255
         sim.scene.nodelabel(self.id, '%d:%d\n ' % (self.id, 0))
         Mote.boot(self)
 
+    ###################
     def shutdown(self):
         # Delete fan-out
         try: sim.scene.dellink(self.id, self.new_parent, 'my_style')
@@ -85,13 +97,18 @@ class MyMote(Mote):
         Mote.shutdown(self)
 
 
+
 ###################################
 class WakeupNodesThread(Thread):
+
+    ###################
     def __init__(self):
         Thread.__init__(self)
+
+    ###################
     def run(self):
-        for x in xrange(5):
-            for y in xrange(5): # Boot up all nodes, except '0'. It's gateway.
+        for x in range(5):
+            for y in range(5): # Boot up all nodes, except '0'. It's gateway.
                 sim.nodes[x*5 + y + 1].boot()
                 sleep(2)
 
@@ -101,7 +118,7 @@ def gw_send():
     global sequence, gw
     sequence += 1
     sim.scene.nodelabel(0, '%d:%d\n ' % (0, sequence))
-    gw.send(0xFFFF, 1, [sequence & 0xFF, (sequence >> 8) & 0xFF, 0])
+    gw.send(0xFFFF, 1, [sequence & 0xFF, (sequence >> 8) & 0xFF, 0])  # Broadcasting all 0xFFFF with FLOOD_MSG_TYPE
 
 def nodes_up(nodes):
     for n in nodes:
@@ -125,7 +142,7 @@ def myScript():
     global gw, sim_port
     gw = GW('localhost:' + sim_port)
 
-    for n in xrange(26):
+    for n in range(26):
         sim.scene.nodescale(n, 1.6)
         sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))
 
@@ -150,12 +167,12 @@ def myScript():
 #    th.join()
 
     ###############
+    print '--- Up all nodes ---'
     nodes_up(range(1, 26))
     sleep(.5); gw_send(); sleep(5)
     sleep(.5); gw_send(); sleep(5)
     sleep(.5); gw_send(); sleep(5)
     sleep(.5); gw_send(); sleep(5)
-
 
     print '--- Down middle nodes ---'
     nodes_down([7,8,12,13])
@@ -198,13 +215,14 @@ if __name__ == '__main__':
     sim = Simulator()
     sim.addNode( MyGateway(), (50,50) )
 
-    for x in xrange(5):
-        for y in xrange(5):
+    for x in range(5):
+        for y in range(5):
             pos = (100 + x*75 + random.randint(0,20),
-                100 + y*75 + random.randint(0,20))
+                   100 + y*75 + random.randint(0,20))
             sim.addNode( MyMote('build/sim/flood.elf'), pos )
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
-    raw_input('Press ENTER key to start...'); sleep(3)
+    # raw_input('Press ENTER key to start...')
+    sleep(1)
 
     sim.run(bootMotes=False, script=myScript)

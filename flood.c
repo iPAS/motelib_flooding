@@ -70,6 +70,10 @@ void reset_besthop()
 
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
+    // radioGetRxStatus(&status);
+
+    debug("Received message..");
+
     FloodMsg *flood = (FloodMsg*)message;
 
     if (type == FLOOD_MSG_TYPE)
@@ -142,14 +146,16 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
 void boot()
 {
+    debug("booting..");
+
     currentSeq = 0;
     hopCount   = MAX_HOP;
+    bestHop    = MAX_HOP;
     parent     = BROADCAST_ADDR; // Use invalid parent, why ?
 
-    srand(getAddress());
-    timerCreate(&delayTimer);
+    srand(getAddress());  // Set random seed
     radioSetRxHandler(on_receive);
 
-    bestHop    = MAX_HOP;
+    timerCreate(&delayTimer);
     timerCreate(&beatTimer);
 }

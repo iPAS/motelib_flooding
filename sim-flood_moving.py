@@ -5,6 +5,8 @@ import random
 from time import sleep
 
 from threading import Thread
+
+
 sim_port = ''
 sequence = 0
 gw       = None
@@ -12,19 +14,23 @@ gw       = None
 
 ###################################
 class MyGateway(Gateway):
+
+    ###################
     def debug(self, msg):
         if msg.find('Gateway starts listening on port') >= 0:
             txt = msg.split(' ')
             global sim_port
             sim_port = txt[5]
-            global gw
-#            gw = GW('localhost:' + sim_port) # Could't connect from here. Why ?
+            # global gw
+            # gw = GW('localhost:' + sim_port) # Could't connect from here. Why ?  --> Do it in the script
 
         Gateway.debug(self, msg)
 
 
 ###################################
 class MyMote(Mote):
+
+    ###################
     def debug(self, msg):
         if msg.find('Change parent from') >= 0:
             txt = msg.split(' ')
@@ -37,6 +43,7 @@ class MyMote(Mote):
 
         Mote.debug(self, msg)
 
+    ###################
     def shutdown(self):
         try:
             sim.scene.dellink(self.id, self.new_parent, 'my_style')
@@ -61,23 +68,35 @@ def nodes_down(nodes):
 
 
 ###################################
-class AliveNodes(Thread):
+class WakeupNodesThread(Thread):
+
+    ###################
     def __init__(self):
         Thread.__init__(self)
+
+    ###################
     def run(self):
-        for x in xrange(5):
-            for y in xrange(5): # Boot up all nodes, except '0'. It's gateway.
+        for x in range(5):
+            for y in range(5): # Boot up all nodes, except '0'. It's gateway.
                 sim.nodes[x*5 + y + 1].boot()
                 sleep(2)
 
+
+###################################
 def myScript():
     global gw, sim_port
     gw = GW('localhost:' + sim_port)
-#    sequence = 0
-#    gw.send(0xFFFF, 0x11, [0, 0, 0]) # Reset msgSeq when gateway was born
+
+    # global sequence
+    # sequence = 0
+    # gw.send(0xFFFF, 0x11, [0, 0, 0])  # Reset msgSeq when gateway was born
+
+    for n in range(26):
+        sim.scene.nodescale(n, 1.6)
+        sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))
 
     ###############
-    th = AliveNodes()
+    th = WakeupNodesThread()
     th.start()
 
     sim.nodes[25].boot()
@@ -123,10 +142,11 @@ if __name__ == '__main__':
     for x in range(5):
         for y in range(5):
             pos = (100 + x*75 + random.randint(0,20),
-                100 + y*75 + random.randint(0,20))
-            sim.addNode( MyMote('build/sim/flood.elf'), pos)
+                   100 + y*75 + random.randint(0,20))
+            sim.addNode( MyMote('build/sim/flood.elf'), pos )
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
-    raw_input('Press ENTER key to start...'); sleep(3)
+    # raw_input('Press ENTER key to start...')
+    sleep(1)
 
     sim.run(bootMotes=False, script=myScript)
