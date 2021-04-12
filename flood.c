@@ -72,9 +72,6 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     // radioGetRxStatus(&status);
 
-    debug("Received message..");
-    return;
-
     FloodMsg *flood = (FloodMsg*)message;
 
     if (type == FLOOD_MSG_TYPE)

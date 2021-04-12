@@ -34,19 +34,10 @@ class MyGateway(Gateway):
         Gateway.debug(self, msg)
 
     ###################
-    def receiveRadioMsg(self, msg):
-        self.debug('Received message..')
+    def receiveRadioMsg(self, msg, rssi):
+        self.debug('Received message: '+msg)
 
-        addr_from = msg[0]+msg[1]*256
-        addr_to   = msg[2]+msg[3]*256
-        msg_type  = msg[4]
-        seqno     = msg[7]+msg[8]*256
-        hop       = msg[9]
-
-        if msg_type == 0x22: # Report seqNo problem ***********
-            self.debug('Report from %d with seqNO %d' % (addr_from, seqno))
-
-        Gateway.receiveRadioMsg(self, msg)
+        Gateway.receiveRadioMsg(self, msg, rssi)
 
 
 ###################################
