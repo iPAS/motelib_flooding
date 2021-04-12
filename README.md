@@ -10,3 +10,10 @@ Expectedly, the packet will be forwarded through intermediates, and,
 
 In case a packet is remembered that it was passed,
     an intermidiate will discard -- no forwarding it.
+
+
+## Quick Start
+
+- Change directory into "motelib", then ```source motelib-vars.sh```.
+- Build the project with ```make```.
+- Run the simulator: ```python sim.py```

@@ -97,7 +97,6 @@ class MyMote(Mote):
         Mote.shutdown(self)
 
 
-
 ###################################
 class WakeupNodesThread(Thread):
 
@@ -118,7 +117,10 @@ def gw_send():
     global sequence, gw
     sequence += 1
     sim.scene.nodelabel(0, '%d:%d\n ' % (0, sequence))
-    gw.send(0xFFFF, 1, [sequence & 0xFF, (sequence >> 8) & 0xFF, 0])  # Broadcasting all 0xFFFF with FLOOD_MSG_TYPE
+
+    msg_type = 1
+    msg = [sequence & 0xFF, (sequence >> 8) & 0xFF, 5]
+    gw.send(dest=0xFFFF, msgType=msg_type, msg=msg)  # Broadcasting 'sequence' all 0xFFFF with FLOOD_MSG_TYPE
 
 def nodes_up(nodes):
     for n in nodes:
@@ -140,7 +142,7 @@ def reset_sequence():
 ###################################
 def myScript():
     global gw, sim_port
-    gw = GW('localhost:' + sim_port)
+    gw = GW('localhost:'+sim_port)
 
     for n in range(26):
         sim.scene.nodescale(n, 1.6)
@@ -219,7 +221,7 @@ if __name__ == '__main__':
         for y in range(5):
             pos = (100 + x*75 + random.randint(0,20),
                    100 + y*75 + random.randint(0,20))
-            sim.addNode( MyMote('build/sim/flood.elf'), pos )
+            sim.addNode( MyMote('build/sim/flood.elf', txRange=100, panid=0x22, channel=0x11), pos )
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
     # raw_input('Press ENTER key to start...')

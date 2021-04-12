@@ -73,6 +73,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     // radioGetRxStatus(&status);
 
     debug("Received message..");
+    return;
 
     FloodMsg *flood = (FloodMsg*)message;
 
@@ -146,7 +147,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
 void boot()
 {
-    debug("booting..");
+    debug("booting.. Addr:%d, PAN_ID:%d, CH:%d", getAddress(), getPanId(), getChannel());
 
     currentSeq = 0;
     hopCount   = MAX_HOP;

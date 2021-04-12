@@ -6,7 +6,11 @@ TARGET     ?= flood
 PLATFORM   ?= sim
 FORMAT     ?= elf
 
-DEBUG      ?= 0
+DEBUG      ?= 1
+
+# DEFAULT_ADDR    ?= 3864
+# DEFAULT_PANID   ?= 0x22
+# DEFAULT_CHANNEL ?= 0x11
 
 OBJS       +=
 LIBS       +=
