@@ -16,4 +16,4 @@ In case a packet is remembered that it was passed,
 
 - Change directory into "motelib", then ```source motelib-vars.sh```.
 - Build the project with ```make```.
-- Run the simulator: ```python sim.py```
+- Run the simulator: ```python sim-flood.py```
