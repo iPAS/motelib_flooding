@@ -1,5 +1,6 @@
 from motesim import Simulator, Mote, Gateway
-from motesim.SimGateway import Gateway as GW
+from motesim.SimGateway import Gateway as SimGateway
+from motesim.MoteSim import strToList, listToStr
 
 import random
 from time import sleep
@@ -13,6 +14,27 @@ gw       = None
 
 
 ###################################
+class MySimGateway(SimGateway):
+
+    ###################
+    def receive(self, source, msgType, msg):
+        '''
+        Gets called when a message is received from radio.  This method
+        should be overridden to perform appropriate actions.
+
+        @param source
+        Contains the address of the message's source
+
+        @param msgType
+        Contains the 8-bit type value
+
+        @param msg
+        Points to a string containing the message
+        '''
+        print '<<< MyGateway received from %x: type=%d, msg=%s >>>' % (source, msgType, strToList(msg))
+
+
+###################################
 class MyGateway(Gateway):
 
     ###################
@@ -22,21 +44,13 @@ class MyGateway(Gateway):
             global sim_port
             sim_port = txt[5]
             # global gw
-            # gw = GW('localhost:' + sim_port)  # Could't connect from here. Why ?  --> Do it in the script
-
-        # elif msg.find('Report from') >= 0:
-        #     txt = msg.split(' ')
-        #     seqno = int(txt[5])
-        #     global sequence
-        #     if seqno > sequence:
-        #         set_sequence(seqno)
+            # gw = SimGateway('localhost:' + sim_port)  # Could't connect here. Why ?  --> Do it in the script
 
         Gateway.debug(self, msg)
 
     ###################
     def receiveRadioMsg(self, msg, rssi):
-        self.debug('Received message: '+msg)
-
+        self.debug('Gateway received message with rssi %d: %s' % (rssi, msg))
         Gateway.receiveRadioMsg(self, msg, rssi)
 
 
@@ -89,21 +103,6 @@ class MyMote(Mote):
 
 
 ###################################
-class WakeupNodesThread(Thread):
-
-    ###################
-    def __init__(self):
-        Thread.__init__(self)
-
-    ###################
-    def run(self):
-        for x in range(5):
-            for y in range(5): # Boot up all nodes, except '0'. It's gateway.
-                sim.nodes[x*5 + y + 1].boot()
-                sleep(2)
-
-
-###################################
 def gw_send():
     global sequence, gw
     sequence += 1
@@ -133,13 +132,26 @@ def reset_sequence():
 ###################################
 def myScript():
     global gw, sim_port
-    gw = GW('localhost:'+sim_port)
+    gw = MySimGateway('localhost:'+sim_port)
 
     for n in range(26):
         sim.scene.nodescale(n, 1.6)
         sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))
 
     ###############
+    class WakeupNodesThread(Thread):
+
+        ###################
+        def __init__(self):
+            Thread.__init__(self)
+
+        ###################
+        def run(self):
+            for x in range(5):
+                for y in range(5): # Boot up all nodes, except '0'. It's gateway.
+                    sim.nodes[x*5 + y + 1].boot()
+                    sleep(2)
+
 #    th = WakeupNodesThread()
 #    th.start()
 #
@@ -160,47 +172,47 @@ def myScript():
 #    th.join()
 
     ###############
+    def reports():
+        sleep(.5); gw_send(); sleep(3)
+        # sleep(.5); gw_send(); sleep(3)
+        # sleep(.5); gw_send(); sleep(3)
+
+    ###############
+    print '<<< Flood routing protocol simulation testing : node_label ==> (idno, seqno, besthop) >>>'
+
     print '--- Up all nodes ---'
     nodes_up(range(1, 26))
-    sleep(.5); gw_send(); sleep(5)
-    sleep(.5); gw_send(); sleep(5)
-    sleep(.5); gw_send(); sleep(5)
-    sleep(.5); gw_send(); sleep(5)
+    reports()
 
     print '--- Down middle nodes ---'
     nodes_down([7,8,12,13])
-    sleep(.5); gw_send(); sleep(5)
-    sleep(.5); gw_send(); sleep(5)
-
-    sleep(10)
+    reports()
 
     print '--- Up middle nodes ---'
     nodes_up([7,8,12,13])
-    sleep(.5); gw_send(); sleep(5)
-    sleep(.5); gw_send(); sleep(5)
+    reports()
 
-    print '--- Down nodes ---'
+    print '--- Down some nodes ---'
     nodes_down([1,2,6,3,7,11,4,8,12,16])
-    sleep(.5); gw_send(); sleep(5)
-    sleep(.5); gw_send(); sleep(5)
+    reports()
 
-    print '--- Up some ---'
+    print '--- Up some nodes ---'
     nodes_up([1,2,6])
-    print 'GW die'
-    reset_sequence() # Emulate Gateway dead
-    sleep(.5); gw_send(); sleep(5)
-    sleep(.5); gw_send(); sleep(5)
+    reports()
+
+    print '--- Emulate Gateway dead by reset_sequence() ___'
+    reset_sequence()  # Emulate Gateway dead
+    reports()
 
     print '--- Up all ---'
     nodes_up([3,7,11,4,8,12,16])
-    print 'GW die again'
-    reset_sequence() # Emulate Gateway dead
-    sleep(.5); gw_send(); sleep(5)
+    reports()
 
-    sleep(.5); gw_send(); sleep(5) # This is error time.
+    print '--- Emulate Gateway dead by reset_sequence() ___'
+    reset_sequence()  # Emulate Gateway dead
+    reports()
 
-    sleep(.5); gw_send(); sleep(5)
-    print 'Conclusion: you will lost 1 message per different of seqNo in networks'
+    print '--- Conclusion: finally you would lost 1 message per different of seqNo in networks ---'
 
 
 ###################################
