@@ -11,6 +11,7 @@ from threading import Thread
 sim_port = ''
 sequence = 0
 gw       = None
+nodes    = []
 
 
 ###################################
@@ -40,12 +41,8 @@ class MyGateway(Gateway):
     ###################
     def debug(self, msg):
         if msg.find('Gateway starts listening on port') >= 0:
-            txt = msg.split(' ')
             global sim_port
-            sim_port = txt[5]
-            # global gw
-            # gw = SimGateway('localhost:' + sim_port)  # Could't connect here. Why ?  --> Do it in the script
-
+            sim_port = msg.split(' ')[5]  # Server port
         Gateway.debug(self, msg)
 
     ###################
@@ -92,13 +89,18 @@ class MyMote(Mote):
     ###################
     def shutdown(self):
         # Delete fan-out
-        try: sim.scene.dellink(self.id, self.new_parent, 'my_style')
-        except: pass
+        try:
+            sim.scene.dellink(self.id, self.new_parent, 'my_style')
+        except: 
+            pass
+
         # Delete fan-in
-#        for n in sim.nodes:
-#            if n.id > 0:
-#                try: sim.scene.dellink(n.id, self.id, 'my_style')
-#                except: pass
+        # for n in sim.nodes:
+        #     if n.id > 0:
+        #         try:
+        #             sim.scene.dellink(n.id, self.id, 'my_style')
+        #         except:
+        #             pass
         Mote.shutdown(self)
 
 
@@ -112,64 +114,70 @@ def gw_send():
     msg = [sequence & 0xFF, (sequence >> 8) & 0xFF, 5]
     gw.send(dest=0xFFFF, msgType=msg_type, msg=msg)  # Broadcasting 'sequence' all 0xFFFF with FLOOD_MSG_TYPE
 
+
 def nodes_up(nodes):
     for n in nodes:
         sim.nodes[n].boot()
 
+
 def nodes_down(nodes):
     for n in nodes:
         sim.nodes[n].shutdown()
+
 
 def set_sequence(v):
     global sequence
     sequence = v
     sim.scene.nodelabel(0, '%d:%d\n ' % (0, sequence))
 
+
 def reset_sequence():
     set_sequence(0)
 
 
 ###################################
-def myScript():
+def script():
+    print '<<< Script gets started >>>'
+
     global gw, sim_port
+    while sim_port == '': sleep(1)  # Wait for MyGateway.debug() ...
     gw = MySimGateway('localhost:'+sim_port)
 
-    for n in range(26):
+    for n in range(len(nodes)+1):
         sim.scene.nodescale(n, 1.6)
         sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))
 
     ###############
-    class WakeupNodesThread(Thread):
+    # class WakeupNodesThread(Thread):
 
-        ###################
-        def __init__(self):
-            Thread.__init__(self)
+    #     ###################
+    #     def __init__(self):
+    #         Thread.__init__(self)
 
-        ###################
-        def run(self):
-            for x in range(5):
-                for y in range(5): # Boot up all nodes, except '0'. It's gateway.
-                    sim.nodes[x*5 + y + 1].boot()
-                    sleep(2)
+    #     ###################
+    #     def run(self):
+    #         for n in range(len(nodes)):
+    #             sim.nodes[n].boot()
+    #             sleep(1)
 
-#    th = WakeupNodesThread()
-#    th.start()
-#
-#    sim.nodes[25].boot()
-#    speed = 0.1
-#    pos = {'x':60, 'y':60}
-#
-#    for j in xrange(4): # Move & route making
-#        for i in xrange(45):
-#            pos['x'] = pos['x'] + 2
-#            pos['y'] = pos['y'] + 2
-#            sim.nodes[25].move(pos['x'], pos['y'])
-#            sleep(speed)
+    # th = WakeupNodesThread()
+    # th.start()
 
-#        gw_send()
-#        sleep(10)
+    # sim.nodes[25].boot()
+    # speed = 0.1
+    # pos = {'x':60, 'y':60}
 
-#    th.join()
+    # for j in xrange(4): # Move & route making
+    #     for i in xrange(45):
+    #         pos['x'] = pos['x'] + 2
+    #         pos['y'] = pos['y'] + 2
+    #         sim.nodes[25].move(pos['x'], pos['y'])
+    #         sleep(speed)
+
+    #     gw_send()
+    #     sleep(10)
+
+    # th.join()
 
     ###############
     def reports():
@@ -178,56 +186,60 @@ def myScript():
         # sleep(.5); gw_send(); sleep(3)
 
     ###############
-    print '<<< Flood routing protocol simulation testing : node_label ==> (idno, seqno, besthop) >>>'
+    print '<<< Flood routing protocol testing : node_label ==> (idno, seqno, besthop) >>>'
 
     print '--- Up all nodes ---'
-    nodes_up(range(1, 26))
+    nodes_up(range(len(nodes)))
+    
+    
     reports()
 
-    print '--- Down middle nodes ---'
-    nodes_down([7,8,12,13])
-    reports()
+    # print '--- Down middle nodes ---'
+    # nodes_down([7,8,12,13])
+    # reports()
 
-    print '--- Up middle nodes ---'
-    nodes_up([7,8,12,13])
-    reports()
+    # print '--- Up middle nodes ---'
+    # nodes_up([7,8,12,13])
+    # reports()
 
-    print '--- Down some nodes ---'
-    nodes_down([1,2,6,3,7,11,4,8,12,16])
-    reports()
+    # print '--- Down some nodes ---'
+    # nodes_down([1,2,6,3,7,11,4,8,12,16])
+    # reports()
 
-    print '--- Up some nodes ---'
-    nodes_up([1,2,6])
-    reports()
+    # print '--- Up some nodes ---'
+    # nodes_up([1,2,6])
+    # reports()
 
-    print '--- Emulate Gateway dead by reset_sequence() ___'
-    reset_sequence()  # Emulate Gateway dead
-    reports()
+    # print '--- Emulate Gateway dead by reset_sequence() ___'
+    # reset_sequence()  # Emulate Gateway dead
+    # reports()
 
-    print '--- Up all ---'
-    nodes_up([3,7,11,4,8,12,16])
-    reports()
+    # print '--- Up all ---'
+    # nodes_up([3,7,11,4,8,12,16])
+    # reports()
 
-    print '--- Emulate Gateway dead by reset_sequence() ___'
-    reset_sequence()  # Emulate Gateway dead
-    reports()
+    # print '--- Emulate Gateway dead by reset_sequence() ___'
+    # reset_sequence()  # Emulate Gateway dead
+    # reports()
 
-    print '--- Conclusion: finally you would lost 1 message per different of seqNo in networks ---'
+    print '--- --- ---'
 
 
 ###################################
 if __name__ == '__main__':
     sim = Simulator()
-    sim.addNode( MyGateway(), (50,50) )
 
-    for x in range(5):
-        for y in range(5):
+    for x in range(3):
+        for y in range(3):
             pos = (100 + x*75 + random.randint(0,20),
                    100 + y*75 + random.randint(0,20))
-            sim.addNode( MyMote('build/sim/flood.elf', txRange=100, panid=0x22, channel=0x11), pos )
+            node = MyMote('build/sim/flood.elf', txRange=100, panid=0x22, channel=0x11)
+            sim.addNode(node, pos)
+            nodes.append(node)
+
+    sim.addNode(MyGateway(), (300,300))
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
-    # raw_input('Press ENTER key to start...')
     sleep(1)
 
-    sim.run(bootMotes=False, script=myScript)
+    sim.run(bootMotes=False, script=script)
