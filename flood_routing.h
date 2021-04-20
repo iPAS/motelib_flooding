@@ -21,8 +21,8 @@
 
 typedef struct flood_msg
 {
-    uint16_t seqNo;
-    uint8_t  hopCount;
+    uint8_t floodSeqNo;
+    uint8_t hopCount;
 } FloodMsg;
 
 
