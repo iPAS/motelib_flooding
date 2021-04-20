@@ -1,5 +1,5 @@
 from motesim import Simulator, Mote, Gateway
-from motesim.SimGateway import Gateway as SimGateway
+from motesim.SimGateway import BROADCAST_ADDR, Gateway as SimGateway
 from motesim.MoteSim import strToList, listToStr
 
 import random
@@ -8,8 +8,10 @@ from time import sleep
 from threading import Thread
 
 
+FLOOD_MSG_TYPE  = 0x01
+REPORT_MSG_TYPE = 0x22
+
 sim_port = ''
-sequence = 0
 gw       = None
 nodes    = []
 
@@ -18,21 +20,29 @@ nodes    = []
 class MySimGateway(SimGateway):
 
     ###################
+    def __init__(self, device='localhost:30000', autoListen=True, sim=None):
+        self.floodId = 0
+        SimGateway.__init__(self, device=device, autoListen=autoListen, sim=sim)
+
+    ###################
     def receive(self, source, msgType, msg):
-        '''
-        Gets called when a message is received from radio.  This method
-        should be overridden to perform appropriate actions.
+        self.debug('MySimGateway received from=%x type=%d: %s' % (source, msgType, strToList(msg)))
 
-        @param source
-        Contains the address of the message's source
+    ###################
+    def send_to_nodeid(self, node_id, msg):
+        sim.scene.nodelabel(self.nodeId, '%d:%d\n' % (self.nodeId, self.frameId))
 
-        @param msgType
-        Contains the 8-bit type value
-
-        @param msg
-        Points to a string containing the message
-        '''
-        print '<<< MyGateway received from %x: type=%d, msg=%s >>>' % (source, msgType, strToList(msg))
+        # Based on flood message structure defined in flood_routing.h,
+        # typedef struct flood_msg
+        # {
+        #     uint8_t floodSeqNo;
+        #     uint8_t hopCount;
+        # } FloodMsg;
+        if isinstance(msg, str):
+            msg = strToList(msg)
+        self.floodId += 1
+        msg = [self.floodId, 1] + msg
+        SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
 
 
 ###################################
@@ -47,7 +57,7 @@ class MyGateway(Gateway):
 
     ###################
     def receiveRadioMsg(self, msg, rssi):
-        self.debug('Gateway received message with rssi %d: %s' % (rssi, msg))
+        self.debug('MyGateway received with rssi=%d: %s' % (rssi, msg))
         Gateway.receiveRadioMsg(self, msg, rssi)
 
 
@@ -58,23 +68,20 @@ class MyMote(Mote):
     def debug(self, msg):
         txt = msg.split(' ')
 
-        def update_label(idno, seqno, besthop):
-            sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (idno, seqno, besthop))
-
-        if msg.find('Change parent from') >= 0:
+        if msg.find('Change parent from') >= 0:  # In set_besthop(..)
             self.old_parent = int(txt[3])
             self.new_parent = int(txt[5])
             if self.old_parent != 0xFFFF:
                 sim.scene.dellink(self.id, self.old_parent, 'my_style')
             sim.scene.addlink(self.id, self.new_parent, 'my_style')
 
-        elif msg.find('Change sequence from') >= 0:
+        elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
             self.seqno = int(txt[5])
-            update_label(self.id, self.seqno, self.besthop)
+            sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (self.id, self.seqno, self.besthop))
 
-        elif msg.find('NEW best hop') >= 0:
+        elif msg.find('New best hop') >= 0:  # In set_besthop(..)
             self.besthop = int(txt[3])
-            update_label(self.id, self.seqno, self.besthop)
+            sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (self.id, self.seqno, self.besthop))
 
         else:
             Mote.debug(self, msg)
@@ -91,7 +98,7 @@ class MyMote(Mote):
         # Delete fan-out
         try:
             sim.scene.dellink(self.id, self.new_parent, 'my_style')
-        except: 
+        except:
             pass
 
         # Delete fan-in
@@ -105,16 +112,6 @@ class MyMote(Mote):
 
 
 ###################################
-def gw_send():
-    global sequence, gw
-    sequence += 1
-    sim.scene.nodelabel(0, '%d:%d\n ' % (0, sequence))
-
-    msg_type = 1
-    msg = [sequence & 0xFF, (sequence >> 8) & 0xFF, 5]
-    gw.send(dest=0xFFFF, msgType=msg_type, msg=msg)  # Broadcasting 'sequence' all 0xFFFF with FLOOD_MSG_TYPE
-
-
 def nodes_up(nodes):
     for n in nodes:
         sim.nodes[n].boot()
@@ -137,15 +134,20 @@ def reset_sequence():
 
 ###################################
 def script():
+    # Beautify the network graph
+    for n in range(len(nodes)+1):  # Plus one for the gw
+        sim.scene.nodescale(n, 2.)
+        sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))  
+
+    # Get started!
     print '<<< Script gets started >>>'
 
-    global gw, sim_port
-    while sim_port == '': sleep(1)  # Wait for MyGateway.debug() ...
-    gw = MySimGateway('localhost:'+sim_port)
+    while sim_port == '':
+        sleep(1)  # Wait for MyGateway.debug() ...
 
-    for n in range(len(nodes)+1):
-        sim.scene.nodescale(n, 1.6)
-        sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))
+    global gw
+    gw = MySimGateway('localhost:'+sim_port, sim=sim)
+
 
     ###############
     # class WakeupNodesThread(Thread):
@@ -179,50 +181,33 @@ def script():
 
     # th.join()
 
-    ###############
-    def reports():
-        sleep(.5); gw_send(); sleep(3)
-        # sleep(.5); gw_send(); sleep(3)
-        # sleep(.5); gw_send(); sleep(3)
 
     ###############
-    print '<<< Flood routing protocol testing : node_label ==> (idno, seqno, besthop) >>>'
+    print '<<<--- Flood routing protocol testing : node_label ==> (idno, seqno, besthop) --->>>'
 
-    print '--- Up all nodes ---'
+    print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
-    
-    
-    reports()
+
+    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    sleep(3)
+    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
 
     # print '--- Down middle nodes ---'
     # nodes_down([7,8,12,13])
-    # reports()
-
     # print '--- Up middle nodes ---'
     # nodes_up([7,8,12,13])
-    # reports()
-
     # print '--- Down some nodes ---'
     # nodes_down([1,2,6,3,7,11,4,8,12,16])
-    # reports()
-
     # print '--- Up some nodes ---'
     # nodes_up([1,2,6])
-    # reports()
-
     # print '--- Emulate Gateway dead by reset_sequence() ___'
     # reset_sequence()  # Emulate Gateway dead
-    # reports()
-
     # print '--- Up all ---'
     # nodes_up([3,7,11,4,8,12,16])
-    # reports()
-
     # print '--- Emulate Gateway dead by reset_sequence() ___'
     # reset_sequence()  # Emulate Gateway dead
-    # reports()
 
-    print '--- --- ---'
+    print '-' * 20
 
 
 ###################################
@@ -237,7 +222,7 @@ if __name__ == '__main__':
             sim.addNode(node, pos)
             nodes.append(node)
 
-    sim.addNode(MyGateway(), (300,300))
+    sim.addNode(MyGateway(), (320,320))
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
     sleep(1)
