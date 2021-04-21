@@ -14,6 +14,7 @@ REPORT_MSG_TYPE = 0x22
 sim_port = ''
 gw       = None
 nodes    = []
+firmware = 'build/sim/test_comm.elf'
 
 
 ###################################
@@ -218,7 +219,7 @@ if __name__ == '__main__':
         for y in range(3):
             pos = (100 + x*75 + random.randint(0,20),
                    100 + y*75 + random.randint(0,20))
-            node = MyMote('build/sim/flood.elf', txRange=100, panid=0x22, channel=0x11)
+            node = MyMote(firmware, txRange=100, panid=0x22, channel=0x11)
             sim.addNode(node, pos)
             nodes.append(node)
 

@@ -1,7 +1,7 @@
 # https://makefiletutorial.com/
 # https://stackoverflow.com/questions/448910/what-is-the-difference-between-the-gnu-makefile-variable-assignments-a
 
-TARGET     ?= flood
+TARGET     ?= test_comm
 
 PLATFORM   ?= sim
 FORMAT     ?= elf

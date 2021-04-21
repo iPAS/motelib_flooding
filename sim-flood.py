@@ -224,7 +224,7 @@ if __name__ == '__main__':
         for y in range(5):
             pos = (100 + x*75 + random.randint(0,20),
                    100 + y*75 + random.randint(0,20))
-            sim.addNode( MyMote('build/sim/flood.elf', txRange=100, panid=0x22, channel=0x11), pos )
+            sim.addNode( MyMote('build/sim/test_comm.elf', txRange=100, panid=0x22, channel=0x11), pos )
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
     # raw_input('Press ENTER key to start...')
