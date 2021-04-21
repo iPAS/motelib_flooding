@@ -7,7 +7,7 @@ static uint8_t   hopCount;
 static Address   parent;
 
 static uint16_t  reportSeqNo;
-static Address   who_sent;
+static Address   head;
 
 static Timer     beatTimer;
 static uint8_t   bestHop;
@@ -37,7 +37,7 @@ void report_back()
     RoutingMsg msg;
     msg.SeqNo       = reportSeqNo;
     msg.hopCount    = hopCount;
-    radioRequestTx(who_sent, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
+    radioRequestTx(head, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
 
@@ -117,12 +117,13 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         else  // if (msg->SeqNo < currentFloodSeqNo)
         {
             // Dead or alive seqNo problem.
-            // Tell who_sent about the small seqNo.
+            // Tell head that this node has a greater seqNo.
+            // Report it back, up until the first hop.
             debug("Report seqNo %d < current %d to node %d", msg->SeqNo, currentFloodSeqNo, source);
-            who_sent    = source;
+            head        = source;
             reportSeqNo = currentFloodSeqNo;
-            hopCount    = MAX_HOP - msg->hopCount;
-            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Start report
+            hopCount    = MAX_HOP - msg->hopCount;  // Prevent out-of-path routing.
+            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back);  // Start report
         }
     }
     else
@@ -134,11 +135,10 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             parent != BROADCAST_ADDR)
         {
             debug("Report forwarded from node %d to parent %d", source, parent);
-
-            who_sent    = parent;
-            reportSeqNo = msg->SeqNo;
+            head        = parent;       // Next hop reported
+            reportSeqNo = msg->SeqNo;   // Update with the new seqNo (greater)
             hopCount    = msg->hopCount + 1;
-            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report
+            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
         }
     }
 }
@@ -167,8 +167,6 @@ void flood_receive()
  */
 void flood_init(void)
 {
-    debug("Booting.. Addr:%d, PAN_ID:%d, CH:%d", getAddress(), getPanId(), getChannel());
-
     currentFloodSeqNo = 0;
     hopCount   = MAX_HOP;
     bestHop    = MAX_HOP;

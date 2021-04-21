@@ -13,5 +13,6 @@ void boot()
 {
     buttonSetHandler(button);
 
+    debug("Booting.. Addr:%d, PAN_ID:%d, CH:%d", getAddress(), getPanId(), getChannel());
     flood_init();
 }
