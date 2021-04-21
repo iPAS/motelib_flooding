@@ -21,10 +21,9 @@ static Address   cddParent;
 static
 void rebroadcast()  // TODO: reboardcast all of the received message
 {
-    FloodMsg msg;
-
-    msg.floodSeqNo = currentFloodSeqNo;
-    msg.hopCount   = hopCount;
+    RoutingMsg msg;
+    msg.SeqNo       = currentFloodSeqNo;
+    msg.hopCount    = hopCount;
     radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
@@ -35,10 +34,9 @@ void rebroadcast()  // TODO: reboardcast all of the received message
 static
 void report_back()
 {
-    FloodMsg msg;
-
-    msg.floodSeqNo = reportSeqNo;
-    msg.hopCount   = hopCount;
+    RoutingMsg msg;
+    msg.SeqNo       = reportSeqNo;
+    msg.hopCount    = hopCount;
     radioRequestTx(who_sent, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
 
@@ -73,11 +71,11 @@ void reset_besthop()
 static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
-    FloodMsg *msg = (FloodMsg*)message;
+    RoutingMsg *msg = (RoutingMsg*)message;
 
     if (type == FLOOD_MSG_TYPE)
     {
-        if (msg->floodSeqNo > currentFloodSeqNo)
+        if (msg->SeqNo > currentFloodSeqNo)
         {
             // Shortest hop problem
             if (msg->hopCount < bestHop || parent == BROADCAST_ADDR)
@@ -101,8 +99,8 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             }
 
             // Dead or alive seqNo problem
-            debug("Change seqNo from %d to %d", currentFloodSeqNo, msg->floodSeqNo);
-            currentFloodSeqNo = msg->floodSeqNo;
+            debug("Change seqNo from current %d to %d", currentFloodSeqNo, msg->SeqNo);
+            currentFloodSeqNo = msg->SeqNo;
 
             if (msg->hopCount < MAX_HOP)
             {
@@ -112,14 +110,15 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
         }
         else
-        if (msg->floodSeqNo == currentFloodSeqNo)
+        if (msg->SeqNo == currentFloodSeqNo)
         {
-           debug("Duplicated seqNo %d from %d, discard", msg->floodSeqNo, source);
+           debug("Duplicated seqNo %d from node %d, discard", msg->SeqNo, source);
         }
-        else
+        else  // if (msg->SeqNo < currentFloodSeqNo)
         {
-            // Dead or alive seqNo problem
-            debug("Report seqNo %d < %d to %d", msg->floodSeqNo, currentFloodSeqNo, source);
+            // Dead or alive seqNo problem.
+            // Tell who_sent about the small seqNo.
+            debug("Report seqNo %d < current %d to node %d", msg->SeqNo, currentFloodSeqNo, source);
             who_sent    = source;
             reportSeqNo = currentFloodSeqNo;
             hopCount    = MAX_HOP - msg->hopCount;
@@ -129,20 +128,30 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     else
     if (type == REPORT_MSG_TYPE)  // Report whether dead or alive seqNo problem
     {
-        if (msg->hopCount    < MAX_HOP            &&
-            msg->floodSeqNo  > currentFloodSeqNo  &&
-            source != BROADCAST_ADDR              &&
+        if (msg->hopCount   < MAX_HOP            &&
+            msg->SeqNo      > currentFloodSeqNo  &&
+            source != BROADCAST_ADDR             &&
             parent != BROADCAST_ADDR)
         {
-            debug("Report forward from %d to %d", source, parent);
+            debug("Report forwarded from node %d to parent %d", source, parent);
 
             who_sent    = parent;
-            reportSeqNo = msg->floodSeqNo;
+            reportSeqNo = msg->SeqNo;
             hopCount    = msg->hopCount + 1;
             timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report
         }
     }
 }
+
+
+/**
+ * Send
+ */
+
+
+/**
+ * Receive
+ */
 
 
 /**
@@ -155,7 +164,7 @@ void flood_init(void)
     currentFloodSeqNo = 0;
     hopCount   = MAX_HOP;
     bestHop    = MAX_HOP;
-    parent     = BROADCAST_ADDR; // Use invalid parent, why ?
+    parent     = BROADCAST_ADDR;  // Use invalid parent, why ?
 
     srand(getAddress());  // Set random seed
     radioSetRxHandler(on_receive);

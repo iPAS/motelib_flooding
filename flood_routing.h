@@ -2,28 +2,19 @@
 #define __FLOOD_ROUTING__
 
 
-#include <stdlib.h>
-
-#include <motelib/system.h>
-#include <motelib/led.h>
-#include <motelib/timer.h>
-#include <motelib/radio.h>
-#include <motelib/uart.h>
-#include <pt/pt.h>
-
+#include "all_headers.h"
 
 #define FLOOD_MSG_TYPE  0x01
 #define REPORT_MSG_TYPE 0x22
 
-#define MAX_HOP 255
-#define WAIT_PARENT 10000
+#define MAX_HOP         255
+#define WAIT_PARENT     10000
 
-
-typedef struct flood_msg
+typedef struct
 {
-    uint8_t floodSeqNo;
+    uint8_t SeqNo;
     uint8_t hopCount;
-} FloodMsg;
+} RoutingMsg;
 
 
 extern void flood_init(void);
