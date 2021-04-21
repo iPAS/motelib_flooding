@@ -1,5 +1,5 @@
-#ifndef __FLOOD_ROUTING__
-#define __FLOOD_ROUTING__
+#ifndef __FLOOD_H__
+#define __FLOOD_H__
 
 
 #include "all_headers.h"
@@ -20,4 +20,4 @@ typedef struct
 extern void flood_init(void);
 
 
-#endif  // __FLOOD_ROUTING__
+#endif  // __FLOOD_H__

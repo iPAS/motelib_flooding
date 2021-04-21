@@ -12,7 +12,7 @@ DEBUG      ?= 1
 # DEFAULT_PANID   ?= 0x22
 # DEFAULT_CHANNEL ?= 0x11
 
-OBJS       += flood_routing.o
+OBJS       += flood.o
 LIBS       +=
 
 MOTELIB_DIR ?= motelib
