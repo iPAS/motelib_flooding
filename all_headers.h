@@ -9,6 +9,7 @@
 #include <motelib/timer.h>
 #include <motelib/radio.h>
 #include <motelib/uart.h>
+#include <motelib/button.h>
 #include <pt/pt.h>
 
 

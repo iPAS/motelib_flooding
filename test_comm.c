@@ -1,16 +1,17 @@
-#include <stdlib.h>
-
-#include <motelib/system.h>
-#include <motelib/led.h>
-#include <motelib/timer.h>
-#include <motelib/radio.h>
-#include <motelib/uart.h>
-#include <pt/pt.h>
-
 #include "flood_routing.h"
+
+
+void button(ButtonStatus s)
+{
+    // Toggle LED#1 whenever the button is pressed
+    if (s == BUTTON_PRESSED)
+        ledToggle(1);
+}
 
 
 void boot()
 {
+    buttonSetHandler(button);
+
     flood_init();
 }

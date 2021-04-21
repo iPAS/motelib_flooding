@@ -147,11 +147,19 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 /**
  * Send
  */
+void flood_send()
+{
+
+}
 
 
 /**
  * Receive
  */
+void flood_receive()
+{
+
+}
 
 
 /**
