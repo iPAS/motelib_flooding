@@ -7,6 +7,7 @@
 
 #define FLOOD_MSG_TYPE  0x01
 #define MAX_HOP         255
+#define MAX_NEIGHBOR    10
 
 typedef struct {
     Address     origin;

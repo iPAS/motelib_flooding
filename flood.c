@@ -1,13 +1,31 @@
 #include "flood.h"
 
 
+struct {
+    Address  neighbor;
+    uint32_t timestamp;
+} neighbor_table[MAX_NEIGHBOR];
+
+
 /**
  * Reboardcasting on unknowning of route.
  */
-static Timer rebroadcast_timer;
+#define MAX_PACKET_SIZE 60
+#define MAX_RING_SIZE 5
 
-static void rebroadcast()  // TODO: reboardcast all of the received message
-{
+static struct {
+    Timer timer;
+
+    struct {
+        uint8_t message[MAX_PACKET_SIZE];
+        uint8_t len;
+    } buffer[MAX_RING_SIZE];
+    uint16_t head;
+    uint16_t tail;
+} rebroadcast_data;  // Rebroadcast data
+
+
+static void rebroadcast() {
     // RoutingMsg msg;
     // msg.SeqNo       = currentFloodSeqNo;
     // msg.hopCount    = hopCount;
@@ -19,7 +37,9 @@ static void rebroadcast()  // TODO: reboardcast all of the received message
  * On packet received
  */
 static void on_receive(Address source, MessageType type, void * message, uint8_t len) {
-    flood_header_st * hdr = (flood_header_st *)message;
+    flood_header_st *hdr = (flood_header_st *)message;
+    uint8_t *msg = &((uint8_t *)message)[sizeof(flood_header_st)];
+    uint8_t msg_len = len - sizeof(flood_header_st);
 
     if (type == FLOOD_MSG_TYPE) {
         // timerStop(&beatTimer);
@@ -36,7 +56,7 @@ static void on_receive(Address source, MessageType type, void * message, uint8_t
         // debug("Report seqNo %d < current %d to node %d", msg->SeqNo, currentFloodSeqNo, source);
     }
     else {
-
+        debug("It's NOT a FLOOD_MSG_TYPE!");
     }
 }
 
@@ -44,15 +64,27 @@ static void on_receive(Address source, MessageType type, void * message, uint8_t
 /**
  * Send
  */
-void flood_send() {}
+void flood_send() {
+
+}
 
 
 /**
  * Init
  */
 void flood_init(void) {
-    srand(getAddress());  // Set random seed
-    radioSetRxHandler(on_receive);
+    // Initial 'neighbor_table'
+    uint8_t i;
+    for (i = 0; i < MAX_NEIGHBOR; i++) {
+        neighbor_table[i].neighbor = BROADCAST_ADDR;
+        neighbor_table[i].timestamp = 0;
+    }
 
-    timerCreate(&rebroadcast_timer);
+    // Initial 'rebroadcast_data'
+    timerCreate(&rebroadcast_data.timer);
+    rebroadcast_data.head = 0;
+    rebroadcast_data.tail = 0;
+
+    // Setup radio system
+    radioSetRxHandler(on_receive);
 }

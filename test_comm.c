@@ -8,6 +8,7 @@ void button(ButtonStatus s) {
 
 
 void boot() {
+    srand(getAddress());  // Set random seed
     buttonSetHandler(button);
 
     debug("Booting.. Addr:%d, PAN_ID:%d, CH:%d", getAddress(), getPanId(), getChannel());
