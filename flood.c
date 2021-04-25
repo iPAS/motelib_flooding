@@ -22,7 +22,7 @@ static
 void rebroadcast()  // TODO: reboardcast all of the received message
 {
     RoutingMsg msg;
-    msg.SeqNo       = currentFloodSeqNo;
+    msg.seqNo       = currentFloodSeqNo;
     msg.hopCount    = hopCount;
     radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
@@ -35,7 +35,7 @@ static
 void report_back()
 {
     RoutingMsg msg;
-    msg.SeqNo       = reportSeqNo;
+    msg.seqNo       = reportSeqNo;
     msg.hopCount    = hopCount;
     radioRequestTx(head, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
 }
@@ -75,7 +75,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
     if (type == FLOOD_MSG_TYPE)
     {
-        if (msg->SeqNo > currentFloodSeqNo)
+        if (msg->seqNo > currentFloodSeqNo)
         {
             // Shortest hop problem
             if (msg->hopCount < bestHop || parent == BROADCAST_ADDR)
@@ -99,8 +99,8 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             }
 
             // Dead or alive seqNo problem
-            debug("Change seqNo from current %d to %d", currentFloodSeqNo, msg->SeqNo);
-            currentFloodSeqNo = msg->SeqNo;
+            debug("Change seqNo from current %d to %d", currentFloodSeqNo, msg->seqNo);
+            currentFloodSeqNo = msg->seqNo;
 
             if (msg->hopCount < MAX_HOP)
             {
@@ -110,16 +110,16 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
         }
         else
-        if (msg->SeqNo == currentFloodSeqNo)
+        if (msg->seqNo == currentFloodSeqNo)
         {
-           debug("Duplicated seqNo %d from node %d, discard", msg->SeqNo, source);
+           debug("Duplicated seqNo %d from node %d, discard", msg->seqNo, source);
         }
-        else  // if (msg->SeqNo < currentFloodSeqNo)
+        else  // if (msg->seqNo < currentFloodSeqNo)
         {
             // Dead or alive seqNo problem.
             // Tell head that this node has a greater seqNo.
             // Report it back, up until the first hop.
-            debug("Report seqNo %d < current %d to node %d", msg->SeqNo, currentFloodSeqNo, source);
+            debug("Report seqNo %d < current %d to node %d", msg->seqNo, currentFloodSeqNo, source);
             head        = source;
             reportSeqNo = currentFloodSeqNo;
             hopCount    = MAX_HOP - msg->hopCount;  // Prevent out-of-path routing.
@@ -130,13 +130,13 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     if (type == REPORT_MSG_TYPE)  // Report whether dead or alive seqNo problem
     {
         if (msg->hopCount   < MAX_HOP            &&
-            msg->SeqNo      > currentFloodSeqNo  &&
+            msg->seqNo      > currentFloodSeqNo  &&
             source != BROADCAST_ADDR             &&
             parent != BROADCAST_ADDR)
         {
             debug("Report forwarded from node %d to parent %d", source, parent);
             head        = parent;       // Next hop reported
-            reportSeqNo = msg->SeqNo;   // Update with the new seqNo (greater)
+            reportSeqNo = msg->seqNo;   // Update with the new seqNo (greater)
             hopCount    = msg->hopCount + 1;
             timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
         }

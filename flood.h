@@ -12,8 +12,9 @@
 
 typedef struct
 {
-    uint8_t SeqNo;
+    uint8_t seqNo;
     uint8_t hopCount;
+    Address origin;
 } RoutingMsg;
 
 
