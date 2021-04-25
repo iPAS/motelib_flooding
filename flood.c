@@ -1,14 +1,21 @@
 #include "flood.h"
 
 
+/**
+ * Neighbor
+ */
 struct {
     Address  neighbor;
     uint32_t timestamp;
 } neighbor_table[MAX_NEIGHBOR];
 
+static bool is_neighbor() {
+
+}
+
 
 /**
- * Reboardcasting on unknowning of route.
+ * Reboardcasting
  */
 #define MAX_PACKET_SIZE 60
 #define MAX_RING_SIZE 5
@@ -23,7 +30,6 @@ static struct {
     uint16_t head;
     uint16_t tail;
 } rebroadcast_data;  // Rebroadcast data
-
 
 static void rebroadcast() {
     // RoutingMsg msg;
