@@ -1,43 +1,43 @@
 #include "flood.h"
 
 
-static Timer     delayTimer;
-static uint16_t  currentFloodSeqNo;
-static uint8_t   hopCount;
-static Address   parent;
+static Timer     delayTxTimer;
+static uint16_t  currSeqNo;     // Current
+static uint8_t   currHopCount;
 
-static uint16_t  reportSeqNo;
-static Address   head;
+static uint16_t  reportSeqNo;   // report_back() argument
+static Address   upperNode;     // report_back() argument
 
-static Timer     beatTimer;
-static uint8_t   bestHop;
-static uint8_t   cddBestHop; // Candidate
-static Address   cddParent;
+static Timer     parentalChallengeTimer;
+static Address   parentNode;
+static uint8_t   bestHopCount;
+static uint8_t   cddBestHop;    // Candidate that will be selected after
+static Address   cddParent;     //   'parentalChallengeTimer' fired.
 
 
 /**
  * Reboardcasting on unknowning of route.
  */
 static
-void rebroadcast()  // TODO: reboardcast all of the received message
+void rebroadcast()  // TODO: reboardcast all of the received message, not just header
 {
-    RoutingMsg msg;
-    msg.seqNo       = currentFloodSeqNo;
-    msg.hopCount    = hopCount;
-    radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
+    RoutingHeader hdr;
+    hdr.seqNo = currSeqNo;
+    hdr.hopCount = currHopCount;
+    radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
 }
 
 
 /**
- * Send back to the node sent beforehand.
+ * Send back to the node sent beforehand to fix the smaller seqNo
  */
 static
 void report_back()
 {
-    RoutingMsg msg;
-    msg.seqNo       = reportSeqNo;
-    msg.hopCount    = hopCount;
-    radioRequestTx(head, REPORT_MSG_TYPE, (char*)&msg, sizeof(msg), NULL);
+    RoutingHeader hdr;
+    hdr.seqNo = reportSeqNo;
+    hdr.hopCount = currHopCount;
+    radioRequestTx(upperNode, FIXSEQ_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
 }
 
 
@@ -47,10 +47,10 @@ void report_back()
 static
 void set_besthop(Address source, uint8_t newhop)
 {
-    debug("Change parent from %d to %d", parent, source);
-    parent  = source;
-    bestHop = newhop;
-    debug("New best hop %d", bestHop);
+    debug("Change parent from %d to %d", parentNode, source);
+    parentNode  = source;
+    bestHopCount = newhop;
+    debug("New best hop %d", bestHopCount);
 }
 
 
@@ -71,94 +71,94 @@ void reset_besthop()
 static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
-    RoutingMsg *msg = (RoutingMsg*)message;
+    RoutingHeader *hdr = (RoutingHeader*)message;
 
+    // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
     {
-        if (msg->seqNo > currentFloodSeqNo)
+        // --------------------------------
+        // Flood message received correctly
+        // --------------------------------
+        if (hdr->seqNo > currSeqNo)
         {
-            // Shortest hop problem
-            if (msg->hopCount < bestHop || parent == BROADCAST_ADDR)
+            // Shortest hop recognition
+            if (hdr->hopCount < bestHopCount  ||    // Shorter hop count, or
+                parentNode == BROADCAST_ADDR        //  never has parent.
+                )
             {
-                timerStop(&beatTimer);
-                set_besthop(source, msg->hopCount);
+                timerStop(&parentalChallengeTimer);
+                set_besthop(source, hdr->hopCount);
             }
             else
-            if (source == parent)
+            if (source == parentNode)
             {
-                timerStop(&beatTimer);
+                timerStop(&parentalChallengeTimer);
             }
             else
             {
-                timerStop(&beatTimer);
+                timerStop(&parentalChallengeTimer);
                 cddParent  = source;  // Keep the new source for a candidate parent.
-                cddBestHop = msg->hopCount;  // It might be greater than or equal to the current bestHop.
+                cddBestHop = hdr->hopCount;  // It might be greater than or equal to the current bestHopCount.
                 // Re-check that parent exist by changing to new parent.
                 // If the current parent still exist, it will acknowledge this node eventually.
-                timerStart(&beatTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop);
+                timerStart(&parentalChallengeTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop);
             }
 
             // Dead or alive seqNo problem
-            debug("Change seqNo from current %d to %d", currentFloodSeqNo, msg->seqNo);
-            currentFloodSeqNo = msg->seqNo;
+            debug("Change seqNo from current %d to %d", currSeqNo, hdr->seqNo);
+            currSeqNo = hdr->seqNo;
 
-            if (msg->hopCount < MAX_HOP)
+            // TODO: if we are the final node, do ...
+
+            if (hdr->hopCount < MAX_HOP)
             {
-                hopCount = msg->hopCount + 1;
-                timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
+                currHopCount = hdr->hopCount + 1;
+                timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
             }
 
         }
+
+        // -------------------------------------
+        // Flood message is duplicated, discard!
+        // -------------------------------------
         else
-        if (msg->seqNo == currentFloodSeqNo)
+        if (hdr->seqNo == currSeqNo)
         {
-           debug("Duplicated seqNo %d from node %d, discard", msg->seqNo, source);
+           debug("Duplicated seqNo %d from node %d, discard", hdr->seqNo, source);
         }
-        else  // if (msg->seqNo < currentFloodSeqNo)
+
+        // -------------------------------------------------
+        // Flood message's seqNo lacks to the whole network,
+        //  report back to the original.
+        // Maybe the original source shut down for a while.
+        // -------------------------------------------------
+        else  // if (hdr->seqNo < currSeqNo)
         {
-            // Dead or alive seqNo problem.
-            // Tell head that this node has a greater seqNo.
+            // Tell upperNode that this node has a greater seqNo.
             // Report it back, up until the first hop.
-            debug("Report seqNo %d < current %d to node %d", msg->seqNo, currentFloodSeqNo, source);
-            head        = source;
-            reportSeqNo = currentFloodSeqNo;
-            hopCount    = MAX_HOP - msg->hopCount;  // Prevent out-of-path routing.
-            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back);  // Start report
+            debug("Report seqNo %d < current %d to node %d", hdr->seqNo, currSeqNo, source);
+            upperNode = source;
+            reportSeqNo = currSeqNo;  // Use our greater seqNo instead
+            currHopCount = MAX_HOP - hdr->hopCount;  // Prevent out-of-path routing.
+            timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &report_back);  // Start report
         }
     }
+    // ------------------------------------------------------------------------
     else
-    if (type == REPORT_MSG_TYPE)  // Report whether dead or alive seqNo problem
+    if (type == FIXSEQ_MSG_TYPE)  // Fix 
     {
-        if (msg->hopCount   < MAX_HOP            &&
-            msg->seqNo      > currentFloodSeqNo  &&
-            source != BROADCAST_ADDR             &&
-            parent != BROADCAST_ADDR)
+        if (hdr->seqNo      > currSeqNo         &&
+            hdr->hopCount   < MAX_HOP           &&
+            source         != BROADCAST_ADDR    &&
+            parentNode     != BROADCAST_ADDR)
         {
-            debug("Report forwarded from node %d to parent %d", source, parent);
-            head        = parent;       // Next hop reported
-            reportSeqNo = msg->seqNo;   // Update with the new seqNo (greater)
-            hopCount    = msg->hopCount + 1;
-            timerStart(&delayTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
+            debug("Report forwarded from node %d to parent %d", source, parentNode);
+            upperNode = parentNode;  // Next hop reported
+            reportSeqNo = hdr->seqNo;  // Update with the new seqNo (greater)
+            currHopCount = hdr->hopCount + 1;
+            timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
         }
     }
-}
-
-
-/**
- * Send
- */
-void flood_send()
-{
-
-}
-
-
-/**
- * Receive
- */
-void flood_receive()
-{
-
 }
 
 
@@ -167,14 +167,15 @@ void flood_receive()
  */
 void flood_init(void)
 {
-    currentFloodSeqNo = 0;
-    hopCount   = MAX_HOP;
-    bestHop    = MAX_HOP;
-    parent     = BROADCAST_ADDR;  // Use invalid parent, why ?
-
     srand(getAddress());  // Set random seed
-    radioSetRxHandler(on_receive);
 
-    timerCreate(&delayTimer);
-    timerCreate(&beatTimer);
+    currSeqNo = 0;
+    currHopCount = MAX_HOP;
+    bestHopCount = MAX_HOP;
+    parentNode = BROADCAST_ADDR;  // parent is none
+
+    timerCreate(&delayTxTimer);
+    timerCreate(&parentalChallengeTimer);
+
+    radioSetRxHandler(on_receive);
 }

@@ -127,9 +127,9 @@ def nodes_down(nodes):
 
 
 def set_sequence(v):
-    global sequence
-    sequence = v
-    sim.scene.nodelabel(0, '%d:%d\n ' % (0, sequence))
+    global gw
+    gw.msgSeqNo = v
+    sim.scene.nodelabel(0, node_label_2l(0, gw.msgSeqNo))
 
 
 def reset_sequence():
@@ -141,7 +141,7 @@ def script():
     # Beautify the network graph
     for n in range(len(nodes)+1):  # Plus one for the gw
         sim.scene.nodescale(n, 2.)
-        sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))  
+        sim.scene.nodelabel(n, node_label_2l(n, 0))  
 
     # Get started!
     print '<<< Script gets started >>>'
@@ -196,6 +196,11 @@ def script():
     sleep(3)
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
 
+    print '<<<--- Gateway is dead / seqNo is reset --->>>'
+    reset_sequence()  # Emulate Gateway dead
+    sleep(3)
+    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+
     # print '--- Down middle nodes ---'
     # nodes_down([7,8,12,13])
     # print '--- Up middle nodes ---'
@@ -209,7 +214,6 @@ def script():
     # print '--- Up all ---'
     # nodes_up([3,7,11,4,8,12,16])
     # print '--- Emulate Gateway dead by reset_sequence() ___'
-    # reset_sequence()  # Emulate Gateway dead
 
     print '-' * 20
 
