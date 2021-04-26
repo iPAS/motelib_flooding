@@ -1,7 +1,7 @@
 # https://makefiletutorial.com/
 # https://stackoverflow.com/questions/448910/what-is-the-difference-between-the-gnu-makefile-variable-assignments-a
 
-TARGET     ?= flood
+TARGET     ?= test_comm
 
 PLATFORM   ?= sim
 FORMAT     ?= elf
@@ -12,7 +12,7 @@ DEBUG      ?= 1
 # DEFAULT_PANID   ?= 0x22
 # DEFAULT_CHANNEL ?= 0x11
 
-OBJS       += flood_routing.o
+OBJS       += flood.o
 LIBS       +=
 
 MOTELIB_DIR ?= motelib

@@ -14,6 +14,7 @@ REPORT_MSG_TYPE = 0x22
 sim_port = ''
 gw       = None
 nodes    = []
+firmware = 'build/sim/test_comm.elf'
 
 
 ###################################
@@ -21,7 +22,7 @@ class MySimGateway(SimGateway):
 
     ###################
     def __init__(self, device='localhost:30000', autoListen=True, sim=None):
-        self.floodId = 0
+        self.msgSeqNo = 0
         SimGateway.__init__(self, device=device, autoListen=autoListen, sim=sim)
 
     ###################
@@ -30,7 +31,8 @@ class MySimGateway(SimGateway):
 
     ###################
     def send_to_nodeid(self, node_id, msg):
-        sim.scene.nodelabel(self.nodeId, '%d:%d\n' % (self.nodeId, self.frameId))
+        self.msgSeqNo += 1
+        sim.scene.nodelabel(self.nodeId, '%d:%d\n' % (self.nodeId, self.msgSeqNo))
 
         # Based on flood message structure defined in flood_routing.h,
         # typedef struct flood_msg
@@ -40,8 +42,7 @@ class MySimGateway(SimGateway):
         # } FloodMsg;
         if isinstance(msg, str):
             msg = strToList(msg)
-        self.floodId += 1
-        msg = [self.floodId, 1] + msg
+        msg = [self.msgSeqNo, 1] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
 
 
@@ -76,7 +77,7 @@ class MyMote(Mote):
             sim.scene.addlink(self.id, self.new_parent, 'my_style')
 
         elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
-            self.seqno = int(txt[5])
+            self.seqno = int(txt[6])
             sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (self.id, self.seqno, self.besthop))
 
         elif msg.find('New best hop') >= 0:  # In set_besthop(..)
@@ -218,7 +219,7 @@ if __name__ == '__main__':
         for y in range(3):
             pos = (100 + x*75 + random.randint(0,20),
                    100 + y*75 + random.randint(0,20))
-            node = MyMote('build/sim/flood.elf', txRange=100, panid=0x22, channel=0x11)
+            node = MyMote(firmware, txRange=100, panid=0x22, channel=0x11)
             sim.addNode(node, pos)
             nodes.append(node)
 

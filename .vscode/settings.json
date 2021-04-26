@@ -4,6 +4,8 @@
         "**/templates/*": "django-txt",
         "timer.h": "c",
         "radio.h": "c",
-        "flood_routing.h": "c"
+        "flood_routing.h": "c",
+        "all_headers.h": "c",
+        "flood.h": "c"
     }
 }
