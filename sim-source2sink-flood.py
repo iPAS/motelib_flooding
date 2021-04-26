@@ -16,6 +16,9 @@ gw       = None
 nodes    = []
 firmware = 'build/sim/test_comm.elf'
 
+node_label_3l = lambda id, seqno, hop : '%d\n%d,%d' % (id, seqno, hop)
+node_label_2l = lambda id, seqno      : '%d\n%d'    % (id, seqno)
+
 
 ###################################
 class MySimGateway(SimGateway):
@@ -32,7 +35,7 @@ class MySimGateway(SimGateway):
     ###################
     def send_to_nodeid(self, node_id, msg):
         self.msgSeqNo += 1
-        sim.scene.nodelabel(self.nodeId, '%d:%d\n' % (self.nodeId, self.msgSeqNo))
+        sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
         # Based on flood message structure defined in flood_routing.h,
         # typedef struct flood_msg
@@ -78,11 +81,11 @@ class MyMote(Mote):
 
         elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
             self.seqno = int(txt[6])
-            sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (self.id, self.seqno, self.besthop))
+            sim.scene.nodelabel(self.id, node_label_3l(self.id, self.seqno, self.besthop))
 
         elif msg.find('New best hop') >= 0:  # In set_besthop(..)
             self.besthop = int(txt[3])
-            sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (self.id, self.seqno, self.besthop))
+            sim.scene.nodelabel(self.id, node_label_3l(self.id, self.seqno, self.besthop))
 
         else:
             Mote.debug(self, msg)
@@ -91,7 +94,7 @@ class MyMote(Mote):
     def boot(self):
         self.seqno   = 0
         self.besthop = 255
-        sim.scene.nodelabel(self.id, '%d:%d\n ' % (self.id, 0))
+        sim.scene.nodelabel(self.id, node_label_2l(self.id, 0))
         Mote.boot(self)
 
     ###################
