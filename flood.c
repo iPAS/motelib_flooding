@@ -14,6 +14,8 @@ static uint8_t   bestHopCount;
 static uint8_t   cddBestHop;    // Candidate that will be selected after
 static Address   cddParent;     //   'parentalChallengeTimer' fired.
 
+static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
+
 
 /**
  * Reboardcasting on unknowning of route.
@@ -104,12 +106,18 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 timerStart(&parentalChallengeTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop);
             }
 
-            // Dead or alive seqNo problem
+            // Update with the newest greater seqNo
             debug("Change seqNo from current %d to %d", currSeqNo, hdr->seqNo);
             currSeqNo = hdr->seqNo;
 
-            // TODO: if we are the final node, do ...
-
+            // If we are the final node!! -- the sink, then
+            if (hdr->finalSink == getAddress())
+            {
+                if (on_approach_sink != NULL)
+                    on_approach_sink(message, len);
+            }
+            // If not, rebroadcast
+            else
             if (hdr->hopCount < MAX_HOP)
             {
                 currHopCount = hdr->hopCount + 1;
@@ -127,11 +135,10 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
            debug("Duplicated seqNo %d from node %d, discard", hdr->seqNo, source);
         }
 
-        // -------------------------------------------------
-        // Flood message's seqNo lacks to the whole network,
-        //  report back to the original.
-        // Maybe the original source shut down for a while.
-        // -------------------------------------------------
+        // ------------------------------------------------------------------------------
+        // Flood message's seqNo lacks to the whole network, report back to the original.
+        // Maybe the original source was disconnected or shut down for a while.
+        // ------------------------------------------------------------------------------
         else  // if (hdr->seqNo < currSeqNo)
         {
             // Tell upperNode that this node has a greater seqNo.
@@ -163,6 +170,15 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
 
 /**
+ * Send & receive by flood routing
+ */
+void flood_set_rx_handler(on_rx_sink fn)
+{
+    on_approach_sink = fn;
+}
+
+
+/**
  * Init
  */
 void flood_init(void)
@@ -173,6 +189,8 @@ void flood_init(void)
     currHopCount = MAX_HOP;
     bestHopCount = MAX_HOP;
     parentNode = BROADCAST_ADDR;  // parent is none
+
+    flood_set_rx_handler(NULL);
 
     timerCreate(&delayTxTimer);
     timerCreate(&parentalChallengeTimer);

@@ -37,15 +37,17 @@ class MySimGateway(SimGateway):
         self.msgSeqNo += 1
         sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
-        # Based on flood message structure defined in flood_routing.h,
-        # typedef struct flood_msg
+        # Based on flood message structure defined in flood.h,
+        # typedef struct
         # {
-        #     uint8_t floodSeqNo;
+        #     uint8_t seqNo;
         #     uint8_t hopCount;
-        # } FloodMsg;
+        #     Address originalSource;
+        #     Address finalSink;
+        # } RoutingHeader;
         if isinstance(msg, str):
             msg = strToList(msg)
-        msg = [self.msgSeqNo, 1] + msg
+        msg = [self.msgSeqNo, 1, 0x09, 0x00, 0x00, 0x00] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
 
 
