@@ -9,7 +9,7 @@ from threading import Thread
 
 
 FLOOD_MSG_TYPE  = 0x01
-REPORT_MSG_TYPE = 0x22
+FIXSEQ_MSG_TYPE = 0x22
 
 sim_port = ''
 gw       = None
@@ -22,6 +22,16 @@ node_label_2l = lambda id, seqno      : '%d\n%d'    % (id, seqno)
 
 ###################################
 class MySimGateway(SimGateway):
+    '''
+    Based on flood message structure defined in flood.h,
+    typedef struct
+    {
+        uint8_t seqNo;
+        uint8_t hopCount;
+        Address originSource;
+        Address finalSink;
+    } RoutingHeader;
+    '''
 
     ###################
     def __init__(self, device='localhost:30000', autoListen=True, sim=None):
@@ -30,26 +40,35 @@ class MySimGateway(SimGateway):
 
     ###################
     def receive(self, source, msgType, msg):
-        self.debug('MySimGateway received from=%x type=%d: %s' % (source, msgType, strToList(msg)))
-
-    ###################
-    def send_to_nodeid(self, node_id, msg):
-        self.msgSeqNo += 1
-        sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
-
         if isinstance(msg, str):
             msg = strToList(msg)
 
-        # Based on flood message structure defined in flood.h,
-        # typedef struct
-        # {
-        #     uint8_t seqNo;
-        #     uint8_t hopCount;
-        #     Address originalSource;
-        #     Address finalSink;
-        # } RoutingHeader;
-        msg = [self.msgSeqNo, 1, self.nodeId%256, self.nodeId/256, 0x00, 0x00] + msg
+        hdr = msg[0:6]
+        seq_no = int(hdr[0])
+        hop_count = int(hdr[1])
+        origin = int(hdr[2]) + int(hdr[3])*256
+        sink = int(hdr[4]) + int(hdr[5])*256
+
+        self.debug('MySimGateway received from=%x type=%d: %s' % (source, msgType, msg))
+
+        # Process FIXSEQ_MSG_TYPE
+        if msgType == FIXSEQ_MSG_TYPE:  #and seq_no > self.frameId:
+            self.debug('MySimGateway changes seqNo from current %d to %d' % (gw.msgSeqNo, seq_no))
+            gw.msgSeqNo = seq_no
+            sim.scene.nodelabel(gw.nodeId, node_label_2l(gw.nodeId, gw.msgSeqNo))
+
+    ###################
+    def send_to_nodeid(self, node_id, msg):
+        if isinstance(msg, str):
+            msg = strToList(msg)
+
+        self.msgSeqNo += 1
+        sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
+
+        msg = [self.msgSeqNo, FLOOD_MSG_TYPE, self.nodeId%256, self.nodeId/256, 0x00, 0x00] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
+
+        self.debug('MySimGateway broadcasted from=%x: %s' % (self.nodeId, msg))
 
 
 ###################################
@@ -140,7 +159,7 @@ def script():
     # Beautify the network graph
     for n in range(len(nodes)+1):  # Plus one for the gw
         sim.scene.nodescale(n, 2.)
-        sim.scene.nodelabel(n, node_label_2l(n, 0))  
+        sim.scene.nodelabel(n, node_label_2l(n, 0))
 
     # Get started!
     print '<<< Script gets started >>>'
@@ -194,11 +213,13 @@ def script():
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
-
-    print '<<<--- Gateway is dead / seqNo is reset --->>>'
-    set_gw_sequence(0)  # Emulate Gateway dead
     sleep(3)
+
+    print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
+    set_gw_sequence(0)  # Emulate Gateway dead
+    sleep(1)
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    sleep(3)
 
     # print '--- Down middle nodes ---'
     # nodes_down([7,8,12,13])
@@ -214,7 +235,8 @@ def script():
     # nodes_up([3,7,11,4,8,12,16])
     # print '--- Emulate Gateway dead by set_gw_sequence(0) ___'
 
-    print '-' * 20
+    raw_input('Press ENTER key to quit...')
+    sim.tkplot.tk.quit()
 
 
 ###################################

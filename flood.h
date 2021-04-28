@@ -14,7 +14,7 @@ typedef struct
 {
     uint8_t seqNo;
     uint8_t hopCount;
-    Address originalSource;
+    Address originSource;
     Address finalSink;
 } RoutingHeader;
 

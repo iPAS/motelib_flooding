@@ -4,7 +4,6 @@
 static Timer     delayTxTimer;
 static uint16_t  currSeqNo;     // Current
 static uint8_t   currHopCount;
-
 static uint16_t  reportSeqNo;   // report_back() argument
 static Address   upperNode;     // report_back() argument
 
@@ -16,6 +15,8 @@ static Address   cddParent;     //   'parentalChallengeTimer' fired.
 
 static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
 
+static RoutingHeader latestHeader;
+
 
 /**
  * Reboardcasting on unknowning of route.
@@ -24,6 +25,7 @@ static
 void rebroadcast()  // TODO: reboardcast all of the received message, not just header
 {
     RoutingHeader hdr;
+    memcpy(&hdr, &latestHeader, sizeof(hdr));
     hdr.seqNo = currSeqNo;
     hdr.hopCount = currHopCount;
     radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
@@ -37,6 +39,7 @@ static
 void report_back()
 {
     RoutingHeader hdr;
+    memcpy(&hdr, &latestHeader, sizeof(hdr));
     hdr.seqNo = reportSeqNo;
     hdr.hopCount = currHopCount;
     radioRequestTx(upperNode, FIXSEQ_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
@@ -74,6 +77,8 @@ static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
+    memcpy(&latestHeader, hdr, sizeof(latestHeader));
+
 
     // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
@@ -136,33 +141,40 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         }
 
         // ------------------------------------------------------------------------------
-        // Flood message's seqNo lacks to the whole network, report back to the original.
-        // Maybe the original source was disconnected or shut down for a while.
+        // Flood message's seqNo lacks to the whole network, report back to the origin
+        //  along the route through the source node.
+        // Maybe the origin source was disconnected or shut down for a while.
         // ------------------------------------------------------------------------------
         else  // if (hdr->seqNo < currSeqNo)
         {
             // Tell upperNode that this node has a greater seqNo.
             // Report it back, up until the first hop.
             debug("Report seqNo %d < current %d to node %d", hdr->seqNo, currSeqNo, source);
-            upperNode = source;
-            reportSeqNo = currSeqNo;  // Use our greater seqNo instead
-            currHopCount = MAX_HOP - hdr->hopCount;  // Prevent out-of-path routing.
+            upperNode = source;                     // Send back to the sender
+            currHopCount = MAX_HOP - hdr->hopCount; // Prevent out-of-path routing.
+            reportSeqNo = currSeqNo;                // Report with the greater seqNo
             timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &report_back);  // Start report
         }
     }
     // ------------------------------------------------------------------------
     else
-    if (type == FIXSEQ_MSG_TYPE)  // Fix 
+    if (type == FIXSEQ_MSG_TYPE)
     {
-        if (hdr->seqNo      > currSeqNo         &&
-            hdr->hopCount   < MAX_HOP           &&
-            parentNode     != BROADCAST_ADDR)
+        if (hdr->hopCount < MAX_HOP)
         {
-            debug("Report forwarded from node %d to parent %d", source, parentNode);
-            upperNode = parentNode;  // Next hop reported
-            reportSeqNo = hdr->seqNo;  // Update with the new seqNo (greater)
-            currHopCount = hdr->hopCount + 1;
-            timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
+            if (hdr->seqNo > currSeqNo)
+            {
+                currSeqNo = hdr->seqNo;  // Update to fix the late currSeqNo at this node
+
+                if (parentNode != BROADCAST_ADDR)  // Tell the others
+                {
+                    debug("Report forwarded from node %d to parent %d", source, parentNode);
+                    upperNode = parentNode;  // Next hop reported
+                    currHopCount = hdr->hopCount + 1;
+                    reportSeqNo = currSeqNo;
+                    timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
+                }
+            }
         }
     }
 }

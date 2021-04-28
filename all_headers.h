@@ -3,6 +3,7 @@
 
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <motelib/system.h>
 #include <motelib/led.h>
