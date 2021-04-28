@@ -9,7 +9,7 @@ from threading import Thread
 
 
 FLOOD_MSG_TYPE  = 0x01
-FIXSEQ_MSG_TYPE = 0x22
+REPORT_MSG_TYPE = 0x22
 
 sim_port = ''
 gw       = None
@@ -52,14 +52,15 @@ class MySimGateway(SimGateway):
         self.debug('MySimGateway received from=%x type=%d: %s' % (source, msgType, msg))
 
         if msgType == FLOOD_MSG_TYPE:
-            if gw.msgSeqNo == seq_no:
-                self.debug('Duplicated seqNo %d from node %d, discard' % (seq_no, source))
+            self.debug('MySimGateway got flood seqNo %d from node %d' % (seq_no, source))
 
-        # Process FIXSEQ_MSG_TYPE
-        if msgType == FIXSEQ_MSG_TYPE:  #and seq_no > self.frameId:
-            self.debug('Change seqNo from current %d to %d' % (gw.msgSeqNo, seq_no))
-            gw.msgSeqNo = seq_no
-            sim.scene.nodelabel(gw.nodeId, node_label_2l(gw.nodeId, gw.msgSeqNo))
+        # Process REPORT_MSG_TYPE
+        elif msgType == REPORT_MSG_TYPE:  #and seq_no > self.frameId:
+            if seq_no > self.msgSeqNo:
+                self.debug('MySimGateway changes seqNo from current %d to %d' % (self.msgSeqNo, seq_no))
+                self.msgSeqNo = seq_no
+
+        sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
     ###################
     def send_to_nodeid(self, node_id, msg):
@@ -72,7 +73,7 @@ class MySimGateway(SimGateway):
         msg = [self.msgSeqNo, FLOOD_MSG_TYPE, self.nodeId%256, self.nodeId/256, 0x00, 0x00] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
 
-        self.debug('MySimGateway broadcasted from=%x: %s' % (self.nodeId, msg))
+        self.debug('MySimGateway broadcasts: %s' % (msg))
 
 
 ###################################
@@ -227,10 +228,10 @@ def script():
 
     print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
     set_gw_sequence(0)  # Emulate Gateway dead
-    nodes_down([8])
+    nodes_down([7, 8])
     sleep(1)
-    nodes_up([8])
-    sleep(1)
+    nodes_up([7, 8])
+    sleep(2)
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
 

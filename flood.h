@@ -5,7 +5,7 @@
 #include "all_headers.h"
 
 #define FLOOD_MSG_TYPE  0x01
-#define FIXSEQ_MSG_TYPE 0x22
+#define REPORT_MSG_TYPE 0x22
 
 #define MAX_HOP         255
 #define WAIT_PARENT     10000

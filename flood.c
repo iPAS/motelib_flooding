@@ -1,7 +1,9 @@
 #include "flood.h"
 // TODO: redesign for the use of multi-source scenario.
 
-static Timer     delayTxTimer;
+static Timer     delayBroadcastTimer;
+static Timer     delayReportTimer;
+
 static uint16_t  currSeqNo;     // Current
 static uint8_t   currHopCount;
 static uint16_t  reportSeqNo;   // report_back() argument
@@ -36,13 +38,13 @@ void rebroadcast()  // TODO: reboardcast all of the received message, not just h
  * Send back to the node sent beforehand to fix the smaller seqNo
  */
 static
-void report_back()
+void report_back()  // FIXME: prior report missing by followers
 {
     RoutingHeader hdr;
     memcpy(&hdr, &latestHeader, sizeof(hdr));
     hdr.seqNo = reportSeqNo;
     hdr.hopCount = currHopCount;
-    radioRequestTx(upperNode, FIXSEQ_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
+    radioRequestTx(upperNode, REPORT_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
 }
 
 
@@ -126,7 +128,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             if (hdr->hopCount < MAX_HOP)
             {
                 currHopCount = hdr->hopCount + 1;
-                timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
+                timerStart(&delayBroadcastTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
             }
 
         }
@@ -153,12 +155,12 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             upperNode = source;                     // Send back to the sender
             currHopCount = MAX_HOP - hdr->hopCount; // Prevent out-of-path routing.
             reportSeqNo = currSeqNo;                // Report with the greater seqNo
-            timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &report_back);  // Start report
+            timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report_back);  // Start report
         }
     }
     // ------------------------------------------------------------------------
     else
-    if (type == FIXSEQ_MSG_TYPE)
+    if (type == REPORT_MSG_TYPE)
     {
         if (hdr->hopCount < MAX_HOP)
         {
@@ -169,11 +171,11 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
                 if (parentNode != BROADCAST_ADDR)  // Tell the others
                 {
-                    debug("Report forwarded from node %d to parent %d", source, parentNode);
+                    debug("Report seqNo %d forwarded from node %d to parent %d", hdr->seqNo, source, parentNode);
                     upperNode = parentNode;  // Next hop reported
                     currHopCount = hdr->hopCount + 1;
                     reportSeqNo = currSeqNo;
-                    timerStart(&delayTxTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
+                    timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report_back); // Forward report until the first hop
                 }
             }
         }
@@ -204,7 +206,8 @@ void flood_init(void)
 
     flood_set_rx_handler(NULL);
 
-    timerCreate(&delayTxTimer);
+    timerCreate(&delayBroadcastTimer);
+    timerCreate(&delayReportTimer);
     timerCreate(&parentalChallengeTimer);
 
     radioSetRxHandler(on_receive);
