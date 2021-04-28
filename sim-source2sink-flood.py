@@ -16,9 +16,22 @@ gw       = None
 nodes    = []
 firmware = 'build/sim/test_comm.elf'
 
+node_label_3l = lambda id, seqno, hop : '%d\n%d,%d' % (id, seqno, hop)
+node_label_2l = lambda id, seqno      : '%d\n%d'    % (id, seqno)
+
 
 ###################################
 class MySimGateway(SimGateway):
+    '''
+    Based on flood message structure defined in flood.h,
+    typedef struct
+    {
+        uint8_t seqNo;
+        uint8_t hopCount;
+        Address originSource;
+        Address finalSink;
+    } RoutingHeader;
+    '''
 
     ###################
     def __init__(self, device='localhost:30000', autoListen=True, sim=None):
@@ -27,23 +40,40 @@ class MySimGateway(SimGateway):
 
     ###################
     def receive(self, source, msgType, msg):
-        self.debug('MySimGateway received from=%x type=%d: %s' % (source, msgType, strToList(msg)))
+        if isinstance(msg, str):
+            msg = strToList(msg)
+
+        hdr = msg[0:6]
+        seq_no = int(hdr[0])
+        hop_count = int(hdr[1])
+        origin = int(hdr[2]) + int(hdr[3])*256
+        sink = int(hdr[4]) + int(hdr[5])*256
+
+        self.debug('MySimGateway received from=%x type=%d: %s' % (source, msgType, msg))
+
+        if msgType == FLOOD_MSG_TYPE:
+            self.debug('MySimGateway got flood seqNo %d from node %d' % (seq_no, source))
+
+        # Process REPORT_MSG_TYPE
+        elif msgType == REPORT_MSG_TYPE:  #and seq_no > self.frameId:
+            if seq_no > self.msgSeqNo:
+                self.debug('MySimGateway changes seqNo from current %d to %d' % (self.msgSeqNo, seq_no))
+                self.msgSeqNo = seq_no
+
+        sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
     ###################
     def send_to_nodeid(self, node_id, msg):
-        self.msgSeqNo += 1
-        sim.scene.nodelabel(self.nodeId, '%d:%d\n' % (self.nodeId, self.msgSeqNo))
-
-        # Based on flood message structure defined in flood_routing.h,
-        # typedef struct flood_msg
-        # {
-        #     uint8_t floodSeqNo;
-        #     uint8_t hopCount;
-        # } FloodMsg;
         if isinstance(msg, str):
             msg = strToList(msg)
-        msg = [self.msgSeqNo, 1] + msg
+
+        self.msgSeqNo += 1
+        sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
+
+        msg = [self.msgSeqNo, FLOOD_MSG_TYPE, self.nodeId%256, self.nodeId/256, 0x00, 0x00] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
+
+        self.debug('MySimGateway broadcasts: %s' % (msg))
 
 
 ###################################
@@ -78,11 +108,11 @@ class MyMote(Mote):
 
         elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
             self.seqno = int(txt[6])
-            sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (self.id, self.seqno, self.besthop))
+            sim.scene.nodelabel(self.id, node_label_3l(self.id, self.seqno, self.besthop))
 
         elif msg.find('New best hop') >= 0:  # In set_besthop(..)
             self.besthop = int(txt[3])
-            sim.scene.nodelabel(self.id, '%d:%d\n%3d' % (self.id, self.seqno, self.besthop))
+            sim.scene.nodelabel(self.id, node_label_3l(self.id, self.seqno, self.besthop))
 
         else:
             Mote.debug(self, msg)
@@ -91,7 +121,7 @@ class MyMote(Mote):
     def boot(self):
         self.seqno   = 0
         self.besthop = 255
-        sim.scene.nodelabel(self.id, '%d:%d\n ' % (self.id, 0))
+        sim.scene.nodelabel(self.id, node_label_2l(self.id, 0))
         Mote.boot(self)
 
     ###################
@@ -123,14 +153,10 @@ def nodes_down(nodes):
         sim.nodes[n].shutdown()
 
 
-def set_sequence(v):
-    global sequence
-    sequence = v
-    sim.scene.nodelabel(0, '%d:%d\n ' % (0, sequence))
-
-
-def reset_sequence():
-    set_sequence(0)
+def set_gw_sequence(seqno):
+    global gw
+    gw.msgSeqNo = seqno
+    sim.scene.nodelabel(gw.nodeId, node_label_2l(gw.nodeId, gw.msgSeqNo))
 
 
 ###################################
@@ -138,7 +164,7 @@ def script():
     # Beautify the network graph
     for n in range(len(nodes)+1):  # Plus one for the gw
         sim.scene.nodescale(n, 2.)
-        sim.scene.nodelabel(n, '%d:%d\n ' % (n, 0))  
+        sim.scene.nodelabel(n, node_label_2l(n, 0))
 
     # Get started!
     print '<<< Script gets started >>>'
@@ -192,6 +218,23 @@ def script():
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    sleep(3)
+
+    print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
+    set_gw_sequence(0)  # Emulate Gateway dead
+    sleep(1)
+    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    sleep(3)
+
+    print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
+    set_gw_sequence(0)  # Emulate Gateway dead
+    nodes_down([7, 8])
+    sleep(1)
+    nodes_up([7, 8])
+    sleep(2)
+    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    sleep(3)
+
 
     # print '--- Down middle nodes ---'
     # nodes_down([7,8,12,13])
@@ -201,14 +244,14 @@ def script():
     # nodes_down([1,2,6,3,7,11,4,8,12,16])
     # print '--- Up some nodes ---'
     # nodes_up([1,2,6])
-    # print '--- Emulate Gateway dead by reset_sequence() ___'
-    # reset_sequence()  # Emulate Gateway dead
+    # print '--- Emulate Gateway dead by set_gw_sequence(0) ___'
+    # set_gw_sequence(0)  # Emulate Gateway dead
     # print '--- Up all ---'
     # nodes_up([3,7,11,4,8,12,16])
-    # print '--- Emulate Gateway dead by reset_sequence() ___'
-    # reset_sequence()  # Emulate Gateway dead
+    # print '--- Emulate Gateway dead by set_gw_sequence(0) ___'
 
-    print '-' * 20
+    raw_input('Press ENTER key to quit...')
+    sim.tkplot.tk.quit()
 
 
 ###################################

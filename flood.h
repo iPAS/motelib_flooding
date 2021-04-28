@@ -14,11 +14,14 @@ typedef struct
 {
     uint8_t seqNo;
     uint8_t hopCount;
-    Address origin;
-} RoutingMsg;
+    Address originSource;
+    Address finalSink;
+} RoutingHeader;
+
+typedef void (*on_rx_sink)(void *message, uint8_t len);
 
 
 extern void flood_init(void);
-
+extern void flood_set_rx_handler(on_rx_sink fn);
 
 #endif  // __FLOOD_H__
