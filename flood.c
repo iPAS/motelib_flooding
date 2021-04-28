@@ -156,7 +156,6 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     {
         if (hdr->seqNo      > currSeqNo         &&
             hdr->hopCount   < MAX_HOP           &&
-            source         != BROADCAST_ADDR    &&
             parentNode     != BROADCAST_ADDR)
         {
             debug("Report forwarded from node %d to parent %d", source, parentNode);

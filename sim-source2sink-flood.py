@@ -37,6 +37,9 @@ class MySimGateway(SimGateway):
         self.msgSeqNo += 1
         sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
+        if isinstance(msg, str):
+            msg = strToList(msg)
+
         # Based on flood message structure defined in flood.h,
         # typedef struct
         # {
@@ -45,9 +48,7 @@ class MySimGateway(SimGateway):
         #     Address originalSource;
         #     Address finalSink;
         # } RoutingHeader;
-        if isinstance(msg, str):
-            msg = strToList(msg)
-        msg = [self.msgSeqNo, 1, 0x09, 0x00, 0x00, 0x00] + msg
+        msg = [self.msgSeqNo, 1, self.nodeId%256, self.nodeId/256, 0x00, 0x00] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
 
 
@@ -128,14 +129,10 @@ def nodes_down(nodes):
         sim.nodes[n].shutdown()
 
 
-def set_sequence(v):
+def set_gw_sequence(seqno):
     global gw
-    gw.msgSeqNo = v
-    sim.scene.nodelabel(0, node_label_2l(0, gw.msgSeqNo))
-
-
-def reset_sequence():
-    set_sequence(0)
+    gw.msgSeqNo = seqno
+    sim.scene.nodelabel(gw.nodeId, node_label_2l(gw.nodeId, gw.msgSeqNo))
 
 
 ###################################
@@ -199,7 +196,7 @@ def script():
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
 
     print '<<<--- Gateway is dead / seqNo is reset --->>>'
-    reset_sequence()  # Emulate Gateway dead
+    set_gw_sequence(0)  # Emulate Gateway dead
     sleep(3)
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
 
@@ -211,11 +208,11 @@ def script():
     # nodes_down([1,2,6,3,7,11,4,8,12,16])
     # print '--- Up some nodes ---'
     # nodes_up([1,2,6])
-    # print '--- Emulate Gateway dead by reset_sequence() ___'
-    # reset_sequence()  # Emulate Gateway dead
+    # print '--- Emulate Gateway dead by set_gw_sequence(0) ___'
+    # set_gw_sequence(0)  # Emulate Gateway dead
     # print '--- Up all ---'
     # nodes_up([3,7,11,4,8,12,16])
-    # print '--- Emulate Gateway dead by reset_sequence() ___'
+    # print '--- Emulate Gateway dead by set_gw_sequence(0) ___'
 
     print '-' * 20
 
