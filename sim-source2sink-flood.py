@@ -51,9 +51,13 @@ class MySimGateway(SimGateway):
 
         self.debug('MySimGateway received from=%x type=%d: %s' % (source, msgType, msg))
 
+        if msgType == FLOOD_MSG_TYPE:
+            if gw.msgSeqNo == seq_no:
+                self.debug('Duplicated seqNo %d from node %d, discard' % (seq_no, source))
+
         # Process FIXSEQ_MSG_TYPE
         if msgType == FIXSEQ_MSG_TYPE:  #and seq_no > self.frameId:
-            self.debug('MySimGateway changes seqNo from current %d to %d' % (gw.msgSeqNo, seq_no))
+            self.debug('Change seqNo from current %d to %d' % (gw.msgSeqNo, seq_no))
             gw.msgSeqNo = seq_no
             sim.scene.nodelabel(gw.nodeId, node_label_2l(gw.nodeId, gw.msgSeqNo))
 
@@ -220,6 +224,16 @@ def script():
     sleep(1)
     gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
+
+    print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
+    set_gw_sequence(0)  # Emulate Gateway dead
+    nodes_down([8])
+    sleep(1)
+    nodes_up([8])
+    sleep(1)
+    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    sleep(3)
+
 
     # print '--- Down middle nodes ---'
     # nodes_down([7,8,12,13])

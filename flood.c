@@ -1,5 +1,5 @@
 #include "flood.h"
-
+// TODO: redesign for the use of multi-source scenario.
 
 static Timer     delayTxTimer;
 static uint16_t  currSeqNo;     // Current
@@ -164,6 +164,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         {
             if (hdr->seqNo > currSeqNo)
             {
+                debug("Change seqNo from current %d to %d", currSeqNo, hdr->seqNo);
                 currSeqNo = hdr->seqNo;  // Update to fix the late currSeqNo at this node
 
                 if (parentNode != BROADCAST_ADDR)  // Tell the others
