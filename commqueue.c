@@ -2,6 +2,7 @@
 
 
 static queue_t cq;
+static Timer delayTxTimer;
 
 
 /**
@@ -19,7 +20,7 @@ void cq_tx_task()
         return;
 
     TxTask *next = (TxTask *)q_item(&cq, 0)->data;
-    timerStart(&next->delayTimer, TIMER_ONESHOT, rand()%TX_DELAY_GAP, &cq_tx_task);
+    timerStart(&delayTxTimer, TIMER_ONESHOT, task.delay_tick, &cq_tx_task);
 }
 
 
@@ -33,8 +34,9 @@ bool cq_send(Address dst, MessageType type, void *msg, uint8_t len)
     task.dst = dst;
     task.type = type;
     task.msg = malloc(len);
+    memcpy(task.msg, msg, len);
     task.len = len;
-    timerCreate(&task.delayTimer);
+    task.delay_tick = rand() % DELAY_TX_GAP;
 
     // Queue the task
     q_enqueue(&cq, &task, sizeof(task));
@@ -42,7 +44,7 @@ bool cq_send(Address dst, MessageType type, void *msg, uint8_t len)
     // Start this job if it's the only first one.
     if (q_length(&cq) == 1)
     {
-        timerStart(&task.delayTimer, TIMER_ONESHOT, rand()%TX_DELAY_GAP, &cq_tx_task);
+        timerStart(&delayTxTimer, TIMER_ONESHOT, task.delay_tick, &cq_tx_task);
     }
 
     return true;
@@ -55,4 +57,5 @@ bool cq_send(Address dst, MessageType type, void *msg, uint8_t len)
 void cq_init()
 {
     q_init(&cq);
+    timerCreate(&delayTxTimer);
 }

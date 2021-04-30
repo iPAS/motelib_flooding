@@ -5,7 +5,7 @@
 #include "all_headers.h"
 #include "queue.h"
 
-#define TX_DELAY_GAP 500
+#define DELAY_TX_GAP 500
 
 typedef struct TxTask
 {
@@ -15,7 +15,7 @@ typedef struct TxTask
     void *msg;
     uint8_t len;
 
-    Timer delayTimer;
+    uint16_t delay_tick;
 } TxTask;
 
 extern void cq_init();

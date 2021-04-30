@@ -30,7 +30,9 @@ void rebroadcast()  // TODO: reboardcast all of the received message, not just h
     memcpy(&hdr, &latestHeader, sizeof(hdr));
     hdr.seqNo = currSeqNo;
     hdr.hopCount = currHopCount;
-    radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
+
+    // radioRequestTx(BROADCAST_ADDR, FLOOD_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
+    cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, &hdr, sizeof(hdr));
 }
 
 
@@ -44,7 +46,9 @@ void report()  // FIXME: prior report missing by followers
     memcpy(&hdr, &latestHeader, sizeof(hdr));
     hdr.seqNo = reportSeqNo;
     hdr.hopCount = currHopCount;
-    radioRequestTx(upperNode, REPORT_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
+
+    // radioRequestTx(upperNode, REPORT_MSG_TYPE, (char*)&hdr, sizeof(hdr), NULL);
+    cq_send(upperNode, REPORT_MSG_TYPE, &hdr, sizeof(hdr));
 }
 
 
@@ -128,7 +132,9 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             if (hdr->hopCount < MAX_HOP)
             {
                 currHopCount = hdr->hopCount + 1;
-                timerStart(&delayBCastTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
+
+                // timerStart(&delayBCastTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
+                rebroadcast();
             }
 
         }
@@ -155,7 +161,9 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             upperNode = source;                     // Send back to the sender
             currHopCount = MAX_HOP - hdr->hopCount; // Prevent out-of-path routing.
             reportSeqNo = currSeqNo;                // Report with the greater seqNo
-            timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report);  // Start report
+
+            // timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report);  // Start report
+            report();
         }
     }
     // ------------------------------------------------------------------------
@@ -175,7 +183,9 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                     upperNode = parentNode;  // Next hop reported
                     currHopCount = hdr->hopCount + 1;
                     reportSeqNo = currSeqNo;
-                    timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report); // Forward report until the first hop
+
+                    // timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report); // Forward report until the first hop
+                    report();
                 }
             }
         }
