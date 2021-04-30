@@ -60,3 +60,18 @@ uint8_t q_length(queue_t *q)
 {
     return q->len;
 }
+
+
+linklist_t *q_item(queue_t *q, uint8_t index)
+{
+    if (index >= q_length(q))  // No item or out-of-scope
+        return NULL;
+
+    linklist_t *spider = q->tail;
+    uint8_t i;
+    for (i = 0; i < index; i++)
+    {
+        spider = spider->next;
+    }
+    return spider;
+}
