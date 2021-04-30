@@ -3,6 +3,7 @@
 
 
 #include "all_headers.h"
+#include "commqueue.h"
 
 #define FLOOD_MSG_TYPE  0x01
 #define REPORT_MSG_TYPE 0x22
@@ -20,8 +21,8 @@ typedef struct
 
 typedef void (*on_rx_sink)(void *message, uint8_t len);
 
-
 extern void flood_init(void);
 extern void flood_set_rx_handler(on_rx_sink fn);
+
 
 #endif  // __FLOOD_H__
