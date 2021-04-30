@@ -15,14 +15,15 @@ typedef struct linklist_t
 
 typedef struct
 {
-    linklist_t *tail;
-    linklist_t *head;
+    linklist_t *head;  // First mover on new item.
+    linklist_t *tail;  // Point to the first data in queue.
     uint8_t len;
 } queue_t;
 
 extern void q_init(queue_t *q);
 extern void q_enqueue(queue_t *q, void *data, uint8_t len);
 extern uint8_t q_dequeue(queue_t *q, void *data, uint8_t maxlen);
+extern uint8_t q_length(queue_t *q);
 
 
 #endif  // __QUEUE_H__
