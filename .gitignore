@@ -1,4 +1,4 @@
 *.pyc
 build/
 *.o
-test_linklist
+test_queue

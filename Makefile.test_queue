@@ -13,10 +13,10 @@ LDFLAGS = -Wall
 
 # SRCS := $(wildcard *.c)
 # BINS := $(SRCS:%.c=%)
-SRCS = test_linklist.c linklist.c
+SRCS = test_queue.c queue.c
 OBJS := $(SRCS:%.c=%.o)
-DEPS = linklist.h
-TARGET = test_linklist
+DEPS = queue.h
+TARGET = test_queue
 
 .PHONY = all clean run test
 
@@ -40,7 +40,7 @@ clean:
 
 
 run: all
-	./test_linklist
+	./test_queue
 
 test: t1 t2 t3
 # Outputs "test", since this is the first target
