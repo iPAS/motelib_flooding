@@ -20,8 +20,8 @@ typedef struct
 
 typedef void (*on_rx_sink)(void *message, uint8_t len);
 
-
 extern void flood_init(void);
 extern void flood_set_rx_handler(on_rx_sink fn);
+
 
 #endif  // __FLOOD_H__
