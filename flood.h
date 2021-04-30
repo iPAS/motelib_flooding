@@ -3,6 +3,7 @@
 
 
 #include "all_headers.h"
+#include "commqueue.h"
 
 #define FLOOD_MSG_TYPE  0x01
 #define REPORT_MSG_TYPE 0x22

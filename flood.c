@@ -202,7 +202,9 @@ void flood_init(void)
     currSeqNo = 0;
     currHopCount = MAX_HOP;
     bestHopCount = MAX_HOP;
-    parentNode = BROADCAST_ADDR;  // parent is none
+    parentNode = BROADCAST_ADDR;  // 'parent' is none
+
+    cq_init();  // Initial communication queue
 
     flood_set_rx_handler(NULL);
 
