@@ -2,10 +2,12 @@
 
 #include "queue.h"
 
-queue_t queue;
+queue_t q;
 
 int main()
 {
-    q_init(&queue);
+    q_init(&q);
+
+    // q_en(q)
     return 0;
 }
