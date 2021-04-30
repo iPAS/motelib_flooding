@@ -1,8 +1,6 @@
 #include "flood.h"
 // TODO: redesign for the use of multi-source scenario.
 
-static Timer     delayBCastTimer;
-static Timer     delayReportTimer;
 
 static uint16_t  currSeqNo;     // Current
 static uint8_t   currHopCount;
@@ -40,7 +38,7 @@ void rebroadcast()  // TODO: reboardcast all of the received message, not just h
  * Send back to the node sent beforehand to fix the smaller seqNo
  */
 static
-void report()  // FIXME: prior report missing by followers
+void report()
 {
     RoutingHeader hdr;
     memcpy(&hdr, &latestHeader, sizeof(hdr));
@@ -218,8 +216,6 @@ void flood_init(void)
 
     flood_set_rx_handler(NULL);
 
-    timerCreate(&delayBCastTimer);
-    timerCreate(&delayReportTimer);
     timerCreate(&parentalChallengeTimer);
 
     radioSetRxHandler(on_receive);
