@@ -1,2 +1,4 @@
 *.pyc
 build/
+*.o
+test_linklist

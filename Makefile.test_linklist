@@ -1,0 +1,59 @@
+# https://makefiletutorial.com/
+# https://gist.github.com/isaacs/62a2d1825d04437c6f08
+
+CC = gcc
+
+DEFINES =
+
+# compiler flags:
+#  -g    adds debugging information to the executable file
+#  -Wall turns on most, but not all, compiler warnings
+CFLAGS = -g -Wall $(DEFINES)
+LDFLAGS = -Wall
+
+# SRCS := $(wildcard *.c)
+# BINS := $(SRCS:%.c=%)
+SRCS = test_linklist.c linklist.c
+OBJS := $(SRCS:%.c=%.o)
+DEPS = linklist.h
+TARGET = test_linklist
+
+.PHONY = all clean run test
+
+
+all: $(TARGET)
+
+
+$(TARGET): $(OBJS)
+	@echo "Link objects: $^"
+	$(CC) $(CFLAGS) $^ -o $@
+
+
+%.o: %.c $(DEPS)
+	@echo "Compile: $@"
+	$(CC) -c $(CFLAGS) $< -o $@
+
+
+clean:
+	@echo "Clean up..."
+	rm -rvf *.o $(TARGET)
+
+
+run: all
+	./test_linklist
+
+test: t1 t2 t3
+# Outputs "test", since this is the first target
+	@echo $@
+# Outputs first
+	@echo $<
+# Outputs all prerequisites newer than the target
+	@echo $?
+# Outputs all prerequisites
+	@echo $^
+t1:
+	@echo "t1 echo"
+t2:
+	@echo "t2 echo"
+t3:
+	@echo "t3 echo"
