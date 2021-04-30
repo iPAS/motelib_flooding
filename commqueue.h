@@ -3,18 +3,17 @@
 
 
 #include "all_headers.h"
+#include "queue.h"
 
 typedef struct TxTask
 {
-    Timer delayTimer;
-
     Address dst;
     MessageType type;
 
-    uint8_t *message;
+    void *msg;
     uint8_t len;
 
-    struct TxTask *next;
+    Timer delayTimer;
 } TxTask;
 
 extern void cq_init();
