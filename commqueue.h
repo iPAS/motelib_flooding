@@ -5,6 +5,8 @@
 #include "all_headers.h"
 #include "queue.h"
 
+#define TX_DELAY_GAP 500
+
 typedef struct TxTask
 {
     Address dst;
@@ -17,6 +19,7 @@ typedef struct TxTask
 } TxTask;
 
 extern void cq_init();
+extern bool cq_send(Address dst, MessageType type, void *msg, uint8_t len);
 
 
 #endif  // __COMMQUEUE_H__
