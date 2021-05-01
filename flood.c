@@ -84,6 +84,9 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             // If we are the final node!! -- the sink, then
             if (hdr->finalSink == getAddress())
             {
+                // -----------------------------------------------
+                // The message finally approaches its destination.
+                // -----------------------------------------------
                 if (on_approach_sink != NULL)
                     on_approach_sink(message, len);
             }
@@ -94,11 +97,11 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 // -----------
                 // Rebroadcast
                 // -----------
-
                 RoutingHeader sendHdr;
                 memcpy(&sendHdr, hdr, sizeof(sendHdr));
                 sendHdr.hopCount++;
                 cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, &sendHdr, sizeof(sendHdr));
+                // TODO: also forward data further than header.
             }
 
         }
