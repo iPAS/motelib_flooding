@@ -52,7 +52,9 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         // --------------------------------
         // Flood message received correctly
         // --------------------------------
-        if (hdr->seqNo > currSeqNo)
+        if (hdr->seqNo > currSeqNo  ||  
+            (hdr->seqNo == 0 && currSeqNo == 255)  // On overflow
+            )
         {
             // Shortest hop recognition
             if (hdr->hopCount < bestHopCount  ||    // Shorter hop count, or
@@ -93,7 +95,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             // If not, rebroadcast
             else
             if (hdr->hopCount < MAX_HOP)
-            {   
+            {
                 // -----------
                 // Rebroadcast
                 // -----------
@@ -115,11 +117,11 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
            debug("Duplicated seqNo %d from node %d, discard", hdr->seqNo, source);
         }
 
-        // ------------------------------------------------------------------------------
+        // ---------------------------------------------------------------------------
         // Flood message's seqNo lacks to the whole network, report back to the origin
         //  along the route through the source node.
         // Maybe the origin source was disconnected or shut down for a while.
-        // ------------------------------------------------------------------------------
+        // ---------------------------------------------------------------------------
         else  // if (hdr->seqNo < currSeqNo)
         {
             // --------------------------------------
@@ -142,7 +144,9 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     {
         if (hdr->hopCount < MAX_HOP)
         {
-            if (hdr->seqNo > currSeqNo)
+            if (hdr->seqNo > currSeqNo  ||  
+                (hdr->seqNo == 0 && currSeqNo == 255)  // On overflow
+                )
             {
                 debug("Change seqNo from current %d to %d", currSeqNo, hdr->seqNo);
                 currSeqNo = hdr->seqNo;  // Update to fix the late currSeqNo at this node
