@@ -15,8 +15,6 @@ static Address   cddParent;     //   'parentalChallengeTimer' fired.
 
 static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
 
-static RoutingHeader latestHeader;
-
 
 /**
  * Reboardcasting on unknowning of route.
@@ -25,7 +23,7 @@ static
 void rebroadcast()  // TODO: reboardcast all of the received message, not just header
 {
     RoutingHeader hdr;
-    memcpy(&hdr, &latestHeader, sizeof(hdr));
+    // memcpy(&hdr, &latestHeader, sizeof(hdr));
     hdr.seqNo = currSeqNo;
     hdr.hopCount = currHopCount;
 
@@ -41,7 +39,7 @@ static
 void report()
 {
     RoutingHeader hdr;
-    memcpy(&hdr, &latestHeader, sizeof(hdr));
+    // memcpy(&hdr, &latestHeader, sizeof(hdr));
     hdr.seqNo = reportSeqNo;
     hdr.hopCount = currHopCount;
 
@@ -81,7 +79,6 @@ static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
-    memcpy(&latestHeader, hdr, sizeof(latestHeader));
 
 
     // ------------------------------------------------------------------------
@@ -132,7 +129,13 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 currHopCount = hdr->hopCount + 1;
 
                 // timerStart(&delayBCastTimer, TIMER_ONESHOT, rand()%500, &rebroadcast);
-                rebroadcast();
+                // rebroadcast();
+
+                RoutingHeader lstHdr;
+                memcpy(&lstHdr, hdr, sizeof(lstHdr));
+                lstHdr.seqNo = currSeqNo;
+                lstHdr.hopCount = currHopCount;
+                cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, &lstHdr, sizeof(lstHdr));
             }
 
         }
@@ -161,7 +164,13 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             reportSeqNo = currSeqNo;                // Report with the greater seqNo
 
             // timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report);  // Start report
-            report();
+            // report();
+
+            RoutingHeader lstHdr;
+            memcpy(&lstHdr, hdr, sizeof(lstHdr));
+            lstHdr.seqNo = reportSeqNo;
+            lstHdr.hopCount = currHopCount;
+            cq_send(upperNode, REPORT_MSG_TYPE, &lstHdr, sizeof(lstHdr));
         }
     }
     // ------------------------------------------------------------------------
@@ -183,7 +192,13 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                     reportSeqNo = currSeqNo;
 
                     // timerStart(&delayReportTimer, TIMER_ONESHOT, rand()%500, &report); // Forward report until the first hop
-                    report();
+                    // report();
+
+                    RoutingHeader lstHdr;
+                    memcpy(&lstHdr, hdr, sizeof(lstHdr));
+                    lstHdr.seqNo = reportSeqNo;
+                    lstHdr.hopCount = currHopCount;
+                    cq_send(upperNode, REPORT_MSG_TYPE, &lstHdr, sizeof(lstHdr));
                 }
             }
         }
