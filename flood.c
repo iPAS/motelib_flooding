@@ -3,7 +3,8 @@
 
 static uint8_t   currSeqNo;     // Current
 
-static Timer     parentalChallengeTimer;
+// static Timer     parentalChallengeTimer;
+
 static Address   parentNode;
 static uint8_t   bestHopCount;
 static uint8_t   cddBestHop;    // Candidate that will be selected after
@@ -20,7 +21,7 @@ typedef struct
     RoutingHeader header;
 } delivery_history_t;
 
-static delivery_history[MAX_HISTORY];
+static delivery_history_t delivery_history[MAX_HISTORY];
 
 static
 void hist_init()
@@ -77,22 +78,21 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 parentNode == BROADCAST_ADDR        //  never has parent.
                 )
             {
-                timerStop(&parentalChallengeTimer);
+                // timerStop(&parentalChallengeTimer);
                 set_besthop(source, hdr->hopCount);
             }
             else
-            if (source == parentNode)
+            if (source == parentNode)  // The parent appears.
             {
-                timerStop(&parentalChallengeTimer);
+                // timerStop(&parentalChallengeTimer);
             }
-            else
+            else  // Hop not better, but keep the new source in mind as candidate parent.
             {
-                timerStop(&parentalChallengeTimer);
-                cddParent  = source;  // Keep the new source for a candidate parent.
+                cddParent  = source;
                 cddBestHop = hdr->hopCount;  // It might be greater than or equal to the current bestHopCount.
-                // Re-check that parent exist by changing to new parent.
-                // If the current parent still exist, it will acknowledge this node eventually.
-                timerStart(&parentalChallengeTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop);
+                // Within specified time, if no clue from the parent, the candidate occupies.
+                // timerStop(&parentalChallengeTimer);
+                // timerStart(&parentalChallengeTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop);
             }
 
             // Update with the newest greater seqNo
@@ -209,9 +209,9 @@ void flood_init(void)
     cq_init();  // Initial communication queue
     hist_init();  // Initial delivery history for memeorizing a received packet.
 
-    flood_set_rx_handler(NULL);
+    on_approach_sink = NULL;
 
-    timerCreate(&parentalChallengeTimer);
+    // timerCreate(&parentalChallengeTimer);
 
     radioSetRxHandler(on_receive);
 }
