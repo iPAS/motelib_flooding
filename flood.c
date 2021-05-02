@@ -13,6 +13,23 @@ static on_rx_sink on_approach_sink;  // Handler called if being the last node in
 
 
 /**
+ * Historical delivery management
+ */
+typedef struct
+{
+    RoutingHeader header;
+} delivery_history_t;
+
+static delivery_history[MAX_HISTORY];
+
+static
+void hist_init()
+{
+
+}
+
+
+/**
  * Set the new besthop (on specific condition, e.g., lowest hop count)
  */
 static
@@ -98,10 +115,10 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 // -----------
                 // Rebroadcast
                 // -----------
-                RoutingHeader sendHdr;
-                memcpy(&sendHdr, hdr, sizeof(sendHdr));
-                sendHdr.hopCount++;
-                cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, &sendHdr, sizeof(sendHdr));
+                RoutingHeader fwd_hdr;
+                memcpy(&fwd_hdr, hdr, sizeof(fwd_hdr));
+                fwd_hdr.hopCount++;
+                cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
                 // TODO: also forward data further than header.
             }
 
@@ -130,11 +147,11 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
             // Tell the upper node -- current sender -- that this node has a greater seqNo.
             // Report it back, up until the first hop.
-            RoutingHeader sendHdr;
-            memcpy(&sendHdr, hdr, sizeof(sendHdr));
-            sendHdr.seqNo = currSeqNo;  // Report with a greater 'seqNo' of this node.
-            sendHdr.hopCount = MAX_HOP - hdr->hopCount;  // Prevent out-of-path routing.
-            cq_send(source, REPORT_MSG_TYPE, &sendHdr, sizeof(sendHdr));
+            RoutingHeader fwd_hdr;
+            memcpy(&fwd_hdr, hdr, sizeof(fwd_hdr));
+            fwd_hdr.seqNo = currSeqNo;  // Report with a greater 'seqNo' of this node.
+            fwd_hdr.hopCount = MAX_HOP - hdr->hopCount;  // Prevent out-of-path routing.
+            cq_send(source, REPORT_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
         }
     }
     // ------------------------------------------------------------------------
@@ -157,11 +174,11 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                     // -----------------------------------------
                     debug("Report seqNo %d forwarded from node %d to parent %d", hdr->seqNo, source, parentNode);
 
-                    RoutingHeader sendHdr;
-                    memcpy(&sendHdr, hdr, sizeof(sendHdr));
-                    sendHdr.seqNo = currSeqNo;
-                    sendHdr.hopCount++;
-                    cq_send(parentNode, REPORT_MSG_TYPE, &sendHdr, sizeof(sendHdr));
+                    RoutingHeader fwd_hdr;
+                    memcpy(&fwd_hdr, hdr, sizeof(fwd_hdr));
+                    fwd_hdr.seqNo = currSeqNo;
+                    fwd_hdr.hopCount++;
+                    cq_send(parentNode, REPORT_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
                 }
             }
         }
@@ -190,6 +207,7 @@ void flood_init(void)
     parentNode = BROADCAST_ADDR;  // 'parent' is none
 
     cq_init();  // Initial communication queue
+    hist_init();  // Initial delivery history for memeorizing a received packet.
 
     flood_set_rx_handler(NULL);
 
