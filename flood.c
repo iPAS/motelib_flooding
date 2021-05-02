@@ -1,8 +1,7 @@
 #include "flood.h"
 // TODO: redesign for the use of multi-source scenario.
 
-
-static uint16_t  currSeqNo;     // Current
+static uint8_t   currSeqNo;     // Current
 
 static Timer     parentalChallengeTimer;
 static Address   parentNode;
