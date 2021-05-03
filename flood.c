@@ -1,5 +1,5 @@
 #include "flood.h"
-// TODO: redesign for the use of multi-source scenario.
+
 
 static uint8_t   currSeqNo;     // Current
 
@@ -18,15 +18,82 @@ static on_rx_sink on_approach_sink;  // Handler called if being the last node in
  */
 typedef struct
 {
-    RoutingHeader header;
+    bool available;
+    uint32_t timestamp;
+
+    RoutingHeader recvHdr;  // Received header.
+    Address source;         // Intermediate node who sent us. Our way back to the source.
+    uint8_t seqNo;          // Current 'seqNo' corresponding with the 'originSource'.
 } delivery_history_t;
 
 static delivery_history_t delivery_history[MAX_HISTORY];
 
+
 static
 void hist_init()
 {
+    uint8_t i;
+    for (i = 0; i < MAX_HISTORY; i++)
+    {
+        delivery_history[i].available = false;
+        delivery_history[i].timestamp = 0;
+    }
+}
 
+
+static
+void hist_update_delivery_info(delivery_history_t *hist, Address source, RoutingHeader *hdr)
+{
+    memcpy(&hist->recvHdr, hdr, sizeof(hist->recvHdr));
+    hist->source = source;
+    hist->seqNo = hdr->seqNo;
+}
+
+
+static
+delivery_history_t *hist_find(Address source, RoutingHeader *hdr)
+{
+    delivery_history_t *hist = delivery_history,
+                       *free_hist = NULL,
+                       *oldest_hist = NULL;
+    uint32_t oldest_timestamp = 0,
+             now = timerTicks();
+    uint8_t i;
+
+    // Find in the table
+    for (i = 0; i < MAX_HISTORY; i++, hist++)
+    {
+        if (!hist->available)
+        {
+            free_hist = hist;  // Memorize a free slot.
+        }
+        else
+        {
+            // Have found!
+            if (hist->recvHdr.originSource == hdr->originSource)
+            {
+                hist->timestamp = now;
+                return hist;
+            }
+
+            // Not found, find the oldest
+            if (hist->timestamp > now)
+                hist->timestamp = 0;  // Reset if overflow
+
+            if (hist->timestamp >= oldest_timestamp)
+            {
+                oldest_timestamp = hist->timestamp;
+                oldest_hist = hist;
+            }
+        }
+    }
+
+    // In case of not found, select an available slot, or, the oldest.
+    hist = (free_hist != NULL)? free_hist : oldest_hist;
+    hist->available = true;
+    hist->timestamp = now;
+    hist_update_delivery_info(hist, source, hdr);
+    return hist;
 }
 
 
@@ -61,7 +128,10 @@ static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
+    delivery_history_t *hist = hist_find(source, hdr);
 
+
+    // hist_update_delivery_info(hist, source, hdr);
 
     // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
@@ -69,7 +139,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         // --------------------------------
         // Flood message received correctly
         // --------------------------------
-        if (hdr->seqNo > currSeqNo  ||  
+        if (hdr->seqNo > currSeqNo  ||
             (hdr->seqNo == 0 && currSeqNo == 255)  // On overflow
             )
         {
@@ -160,7 +230,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     {
         if (hdr->hopCount < MAX_HOP)
         {
-            if (hdr->seqNo > currSeqNo  ||  
+            if (hdr->seqNo > currSeqNo  ||
                 (hdr->seqNo == 0 && currSeqNo == 255)  // On overflow
                 )
             {

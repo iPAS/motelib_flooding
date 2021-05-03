@@ -7,6 +7,7 @@
         "flood_routing.h": "c",
         "all_headers.h": "c",
         "flood.h": "c",
-        "queue.h": "c"
+        "queue.h": "c",
+        "commqueue.h": "c"
     }
 }
