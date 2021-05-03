@@ -11,8 +11,10 @@ from threading import Thread
 FLOOD_MSG_TYPE  = 0x01
 REPORT_MSG_TYPE = 0x22
 
+NUMBER_OF_GW = 1
+
 sim_port = ''
-gw       = None
+simgw    = None
 nodes    = []
 firmware = 'build/sim/test_comm.elf'
 
@@ -153,10 +155,9 @@ def nodes_down(nodes):
         sim.nodes[n].shutdown()
 
 
-def set_gw_sequence(seqno):
-    global gw
-    gw.msgSeqNo = seqno
-    sim.scene.nodelabel(gw.nodeId, node_label_2l(gw.nodeId, gw.msgSeqNo))
+def set_simgw_sequence(simgw, seqno):
+    simgw.msgSeqNo = seqno
+    sim.scene.nodelabel(simgw.nodeId, node_label_2l(simgw.nodeId, simgw.msgSeqNo))
 
 
 ###################################
@@ -172,8 +173,8 @@ def script():
     while sim_port == '':
         sleep(1)  # Wait for MyGateway.debug() ...
 
-    global gw
-    gw = MySimGateway('localhost:'+sim_port, sim=sim)
+    global simgw
+    simgw = MySimGateway('localhost:'+sim_port, sim=sim)
 
 
     ###############
@@ -215,40 +216,25 @@ def script():
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
 
-    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
-    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
 
     print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
-    set_gw_sequence(0)  # Emulate Gateway dead
+    set_simgw_sequence(simgw, 0)  # Emulate Gateway dead
     sleep(1)
-    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
 
     print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
-    set_gw_sequence(0)  # Emulate Gateway dead
+    set_simgw_sequence(simgw, 0)  # Emulate Gateway dead
     nodes_down([7, 8])
     sleep(1)
     nodes_up([7, 8])
     sleep(2)
-    gw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
     sleep(3)
-
-
-    # print '--- Down middle nodes ---'
-    # nodes_down([7,8,12,13])
-    # print '--- Up middle nodes ---'
-    # nodes_up([7,8,12,13])
-    # print '--- Down some nodes ---'
-    # nodes_down([1,2,6,3,7,11,4,8,12,16])
-    # print '--- Up some nodes ---'
-    # nodes_up([1,2,6])
-    # print '--- Emulate Gateway dead by set_gw_sequence(0) ___'
-    # set_gw_sequence(0)  # Emulate Gateway dead
-    # print '--- Up all ---'
-    # nodes_up([3,7,11,4,8,12,16])
-    # print '--- Emulate Gateway dead by set_gw_sequence(0) ___'
 
     raw_input('Press ENTER key to quit...')
     sim.tkplot.tk.quit()
@@ -267,6 +253,7 @@ if __name__ == '__main__':
             nodes.append(node)
 
     sim.addNode(MyGateway(), (320,320))  # TODO: multisource testing
+    # sim.addNode(MyGateway(), (320,60))  # TODO: multisource testing
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
     sleep(1)
