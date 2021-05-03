@@ -21,7 +21,7 @@ typedef struct
     bool available;
     uint32_t timestamp;
 
-    RoutingHeader recvHdr;  // Received header.
+    RoutingHeader latestHdr;  // Received header.
     Address parent;         // Intermediate node who sent us. Our way back to the source.
     uint8_t currSeqNo;      // Current 'seqNo' corresponding with the 'originSource'.
 } delivery_history_t;
@@ -62,7 +62,7 @@ delivery_history_t *hist_find(RoutingHeader *hdr)
         else
         {
             // Have found!
-            if (hist->recvHdr.originSource == hdr->originSource)
+            if (hist->latestHdr.originSource == hdr->originSource)
             {
                 hist->timestamp = now;
                 return hist;
@@ -84,7 +84,7 @@ delivery_history_t *hist_find(RoutingHeader *hdr)
     hist = (free_hist != NULL)? free_hist : oldest_hist;
     hist->available = true;
     hist->timestamp = now;
-    memcpy(&hist->recvHdr, hdr, sizeof(hist->recvHdr));
+    memcpy(&hist->latestHdr, hdr, sizeof(hist->latestHdr));
     hist->currSeqNo = hdr->seqNo - 1;  // Believe in the sender
     hist->parent = BROADCAST_ADDR;  // Back to none again.
     return hist;
@@ -252,7 +252,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     }
 
     // Save the header to history table
-    memcpy(&hist->recvHdr, hdr, sizeof(hist->recvHdr));
+    memcpy(&hist->latestHdr, hdr, sizeof(hist->latestHdr));
 }
 
 
