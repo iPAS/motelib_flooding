@@ -1,14 +1,14 @@
 #include "flood.h"
 
 
-static uint8_t   currSeqNo;     // Current
+// static uint8_t   currSeqNo;     // Current
 
 // static Timer     parentalChallengeTimer;
 
-static Address   parentNode;
-static uint8_t   bestHopCount;
-static uint8_t   cddBestHop;    // Candidate that will be selected after
-static Address   cddParent;     //   'parentalChallengeTimer' fired.
+// static Address   parentNode;
+// static uint8_t   bestHopCount;
+// static uint8_t   cddBestHop;    // Candidate that will be selected after
+// static Address   cddParent;     //   'parentalChallengeTimer' fired.
 
 static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
 
@@ -22,8 +22,8 @@ typedef struct
     uint32_t timestamp;
 
     RoutingHeader recvHdr;  // Received header.
-    Address source;         // Intermediate node who sent us. Our way back to the source.
-    uint8_t seqNo;          // Current 'seqNo' corresponding with the 'originSource'.
+    Address parent;         // Intermediate node who sent us. Our way back to the source.
+    uint8_t currSeqNo;      // Current 'seqNo' corresponding with the 'originSource'.
 } delivery_history_t;
 
 static delivery_history_t delivery_history[MAX_HISTORY];
@@ -37,21 +37,22 @@ void hist_init()
     {
         delivery_history[i].available = false;
         delivery_history[i].timestamp = 0;
+        delivery_history[i].parent = BROADCAST_ADDR;
     }
 }
 
 
 static
-void hist_update_delivery_info(delivery_history_t *hist, Address source, RoutingHeader *hdr)
+void hist_update_delivery_info(delivery_history_t *hist, RoutingHeader *hdr)
 {
     memcpy(&hist->recvHdr, hdr, sizeof(hist->recvHdr));
-    hist->source = source;
-    hist->seqNo = hdr->seqNo;
+    //hist->parent = source;  // XXX: cannot updated here, depended on message type as well.
+    hist->currSeqNo = hdr->seqNo;
 }
 
 
 static
-delivery_history_t *hist_find(Address source, RoutingHeader *hdr)
+delivery_history_t *hist_find(RoutingHeader *hdr)
 {
     delivery_history_t *hist = delivery_history,
                        *free_hist = NULL,
@@ -92,7 +93,8 @@ delivery_history_t *hist_find(Address source, RoutingHeader *hdr)
     hist = (free_hist != NULL)? free_hist : oldest_hist;
     hist->available = true;
     hist->timestamp = now;
-    hist_update_delivery_info(hist, source, hdr);
+    hist_update_delivery_info(hist, hdr);
+    hist->parent = BROADCAST_ADDR;  // Back to none again.
     return hist;
 }
 
@@ -100,25 +102,25 @@ delivery_history_t *hist_find(Address source, RoutingHeader *hdr)
 /**
  * Set the new besthop (on specific condition, e.g., lowest hop count)
  */
-static
-void set_besthop(Address source, uint8_t newhop)
-{
-    debug("Change parent from %d to %d", parentNode, source);
-    parentNode  = source;
-    bestHopCount = newhop;
-    debug("New best hop %d", bestHopCount);
-}
+// static
+// void set_besthop(Address source, uint8_t newhop)
+// {
+//     debug("Change parent from %d to %d", parentNode, source);
+//     parentNode  = source;
+//     bestHopCount = newhop;
+//     debug("New best hop %d", bestHopCount);
+// }
 
 
 /**
  * Reset the besthop to
  */
-static
-void reset_besthop()
-{
-    // set_besthop(BROADCAST_ADDR, MAX_HOP);
-    set_besthop(cddParent, cddBestHop);
-}
+// static
+// void reset_besthop()
+// {
+//     // set_besthop(BROADCAST_ADDR, MAX_HOP);
+//     set_besthop(cddParent, cddBestHop);
+// }
 
 
 /**
@@ -128,10 +130,7 @@ static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
-    delivery_history_t *hist = hist_find(source, hdr);
-
-
-    // hist_update_delivery_info(hist, source, hdr);
+    delivery_history_t *hist = hist_find(hdr);  // Historical data based on 'originSource'
 
     // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
@@ -139,10 +138,11 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         // --------------------------------
         // Flood message received correctly
         // --------------------------------
-        if (hdr->seqNo > currSeqNo  ||
-            (hdr->seqNo == 0 && currSeqNo == 255)  // On overflow
+        if (hdr->seqNo > hist->currSeqNo  ||
+            (hdr->seqNo == 0 && hist->currSeqNo == 255)  // On overflow
             )
         {
+/*
             // Shortest hop recognition
             if (hdr->hopCount < bestHopCount  ||    // Shorter hop count, or
                 parentNode == BROADCAST_ADDR        //  never has parent.
@@ -164,10 +164,15 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 // timerStop(&parentalChallengeTimer);
                 // timerStart(&parentalChallengeTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop);
             }
+*/
+            // Update parent
+            debug("Change parent from %d to %d", hist->parent, source);
+            hist->parent = source;
+            debug("New best hop %d", hdr->hopCount);
 
             // Update with the newest greater seqNo
-            debug("Change seqNo from current %d to %d", currSeqNo, hdr->seqNo);
-            currSeqNo = hdr->seqNo;
+            debug("Change seqNo from current %d to %d", hist->currSeqNo, hdr->seqNo);
+            hist->currSeqNo = hdr->seqNo;
 
             // If we are the final node!! -- the sink, then
             if (hdr->finalSink == getAddress())
@@ -198,7 +203,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         // Flood message is duplicated, discard!
         // -------------------------------------
         else
-        if (hdr->seqNo == currSeqNo)
+        if (hdr->seqNo == hist->currSeqNo)
         {
            debug("Duplicated seqNo %d from node %d, discard", hdr->seqNo, source);
         }
@@ -208,18 +213,18 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         //  along the route through the source node.
         // Maybe the origin source was disconnected or shut down for a while.
         // ---------------------------------------------------------------------------
-        else  // if (hdr->seqNo < currSeqNo)
+        else  // if (hdr->seqNo < hist->currSeqNo)
         {
             // --------------------------------------
             // Report back to the sender -- 'source'.
             // --------------------------------------
-            debug("Report seqNo %d < current %d to node %d", hdr->seqNo, currSeqNo, source);
+            debug("Report seqNo %d < current %d to node %d", hdr->seqNo, hist->currSeqNo, source);
 
             // Tell the upper node -- current sender -- that this node has a greater seqNo.
             // Report it back, up until the first hop.
             RoutingHeader fwd_hdr;
             memcpy(&fwd_hdr, hdr, sizeof(fwd_hdr));
-            fwd_hdr.seqNo = currSeqNo;  // Report with a greater 'seqNo' of this node.
+            fwd_hdr.seqNo = hist->currSeqNo;  // Report with a greater 'seqNo' of this node.
             fwd_hdr.hopCount = MAX_HOP - hdr->hopCount;  // Prevent out-of-path routing.
             cq_send(source, REPORT_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
         }
@@ -230,29 +235,32 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     {
         if (hdr->hopCount < MAX_HOP)
         {
-            if (hdr->seqNo > currSeqNo  ||
-                (hdr->seqNo == 0 && currSeqNo == 255)  // On overflow
+            if (hdr->seqNo > hist->currSeqNo  ||
+                (hdr->seqNo == 0 && hist->currSeqNo == 255)  // On overflow
                 )
             {
-                debug("Change seqNo from current %d to %d", currSeqNo, hdr->seqNo);
-                currSeqNo = hdr->seqNo;  // Update to fix the late currSeqNo at this node
+                debug("Change seqNo from current %d to %d", hist->currSeqNo, hdr->seqNo);
+                hist->currSeqNo = hdr->seqNo;  // Update to fix the late currSeqNo at this node
 
-                if (parentNode != BROADCAST_ADDR)  // Tell the others
+                if (hist->parent != BROADCAST_ADDR)  // Tell the others
                 {
                     // -----------------------------------------
                     // Next hop to be reported is node's parent.
                     // -----------------------------------------
-                    debug("Report seqNo %d forwarded from node %d to parent %d", hdr->seqNo, source, parentNode);
+                    debug("Report seqNo %d forwarded from node %d to parent %d", hdr->seqNo, source, hist->parent);
 
                     RoutingHeader fwd_hdr;
                     memcpy(&fwd_hdr, hdr, sizeof(fwd_hdr));
-                    fwd_hdr.seqNo = currSeqNo;
+                    fwd_hdr.seqNo = hist->currSeqNo;
                     fwd_hdr.hopCount++;
-                    cq_send(parentNode, REPORT_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
+                    cq_send(hist->parent, REPORT_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
                 }
             }
         }
     }
+
+    // Save the history
+    hist_update_delivery_info(hist, hdr);
 }
 
 
@@ -272,9 +280,9 @@ void flood_init(void)
 {
     srand(getAddress());  // Set random seed
 
-    currSeqNo = 0;
-    bestHopCount = MAX_HOP;
-    parentNode = BROADCAST_ADDR;  // 'parent' is none
+    // currSeqNo = 0;
+    // bestHopCount = MAX_HOP;
+    // parentNode = BROADCAST_ADDR;  // 'parent' is none
 
     cq_init();  // Initial communication queue
     hist_init();  // Initial delivery history for memeorizing a received packet.
