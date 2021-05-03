@@ -1,5 +1,5 @@
-#ifndef __ALL_HEADERS__
-#define __ALL_HEADERS__
+#ifndef __ALL_HEADERS_H__
+#define __ALL_HEADERS_H__
 
 
 #include <stdlib.h>
