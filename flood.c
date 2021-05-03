@@ -1,21 +1,8 @@
 #include "flood.h"
 
 
-// static uint8_t   currSeqNo;     // Current
-
-// static Timer     parentalChallengeTimer;
-
-// static Address   parentNode;
-// static uint8_t   bestHopCount;
-// static uint8_t   cddBestHop;    // Candidate that will be selected after
-// static Address   cddParent;     //   'parentalChallengeTimer' fired.
-
 static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
 
-
-/**
- * Historical delivery management
- */
 typedef struct
 {
     bool available;
@@ -29,6 +16,9 @@ typedef struct
 static delivery_history_t delivery_history[MAX_HISTORY];
 
 
+/**
+ * Historical delivery management
+ */
 static
 void hist_init()
 {
@@ -92,30 +82,6 @@ delivery_history_t *hist_find(RoutingHeader *hdr)
 
 
 /**
- * Set the new besthop (on specific condition, e.g., lowest hop count)
- */
-// static
-// void set_besthop(Address source, uint8_t newhop)
-// {
-//     debug("Change parent from %d to %d", parentNode, source);
-//     parentNode  = source;
-//     bestHopCount = newhop;
-//     debug("New best hop %d", bestHopCount);
-// }
-
-
-/**
- * Reset the besthop to
- */
-// static
-// void reset_besthop()
-// {
-//     // set_besthop(BROADCAST_ADDR, MAX_HOP);
-//     set_besthop(cddParent, cddBestHop);
-// }
-
-
-/**
  * On packet received
  */
 static
@@ -134,29 +100,6 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             (hdr->seqNo == 0 && hist->currSeqNo == 255)  // On overflow
             )
         {
-/*
-            // Shortest hop recognition
-            if (hdr->hopCount < bestHopCount  ||    // Shorter hop count, or
-                parentNode == BROADCAST_ADDR        //  never has parent.
-                )
-            {
-                // timerStop(&parentalChallengeTimer);
-                set_besthop(source, hdr->hopCount);
-            }
-            else
-            if (source == parentNode)  // The parent appears.
-            {
-                // timerStop(&parentalChallengeTimer);
-            }
-            else  // Hop not better, but keep the new source in mind as candidate parent.
-            {
-                cddParent  = source;
-                cddBestHop = hdr->hopCount;  // It might be greater than or equal to the current bestHopCount.
-                // Within specified time, if no clue from the parent, the candidate occupies.
-                // timerStop(&parentalChallengeTimer);
-                // timerStart(&parentalChallengeTimer, TIMER_ONESHOT, WAIT_PARENT, &reset_besthop);
-            }
-*/
             // Update parent
             debug("Change parent from %d to %d", hist->parent, source);
             hist->parent = source;
@@ -270,18 +213,9 @@ void flood_set_rx_handler(on_rx_sink fn)
  */
 void flood_init(void)
 {
-    srand(getAddress());  // Set random seed
-
-    // currSeqNo = 0;
-    // bestHopCount = MAX_HOP;
-    // parentNode = BROADCAST_ADDR;  // 'parent' is none
-
     cq_init();  // Initial communication queue
     hist_init();  // Initial delivery history for memeorizing a received packet.
 
     on_approach_sink = NULL;
-
-    // timerCreate(&parentalChallengeTimer);
-
     radioSetRxHandler(on_receive);
 }
