@@ -13,9 +13,9 @@ REPORT_MSG_TYPE = 0x22
 
 NUMBER_OF_GW = 1
 
-sim_port = ''
-simgw    = None
-nodes    = []
+gws = []
+simgws = []
+nodes = []
 firmware = 'build/sim/test_comm.elf'
 
 node_label_3l = lambda id, seqno, hop : '%d\n%d,%d' % (id, seqno, hop)
@@ -83,9 +83,9 @@ class MyGateway(Gateway):
 
     ###################
     def debug(self, msg):
-        if msg.find('Gateway starts listening on port') >= 0:
-            global sim_port
-            sim_port = msg.split(' ')[5]  # Server port
+        # if msg.find('Gateway starts listening on port') >= 0:
+        #     self.wait_simgw_port = msg.split(' ')[5]  # Server port
+        #     Gateway.debug(self, 'port: %s %s' % (self.wait_simgw_port, self.listen_port))
         Gateway.debug(self, msg)
 
     ###################
@@ -162,19 +162,17 @@ def set_simgw_sequence(simgw, seqno):
 
 ###################################
 def script():
+    global gws, simgws
+
     # Beautify the network graph
-    for n in range(len(nodes)+1):  # Plus one for the gw
+    for n in range(len(nodes)+len(gws)):  # Plus one for the gw
         sim.scene.nodescale(n, 2.)
         sim.scene.nodelabel(n, node_label_2l(n, 0))
 
     # Get started!
     print '<<< Script gets started >>>'
-
-    while sim_port == '':
-        sleep(1)  # Wait for MyGateway.debug() ...
-
-    global simgw
-    simgw = MySimGateway('localhost:'+sim_port, sim=sim)
+    for gw in gws:
+        simgws.append(MySimGateway('localhost:{}'.format(gw.listen_port), sim=sim))
 
 
     ###############
@@ -212,6 +210,8 @@ def script():
 
     ###############
     print '<<<--- Flood routing protocol testing : node_label ==> (idno, seqno, besthop) --->>>'
+
+    simgw = simgws[1]  # XXX: test
 
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
@@ -252,8 +252,11 @@ if __name__ == '__main__':
             sim.addNode(node, pos)
             nodes.append(node)
 
-    sim.addNode(MyGateway(), (320,320))  # TODO: multisource testing
-    # sim.addNode(MyGateway(), (320,60))  # TODO: multisource testing
+    gw_positions = [ (320, 55), (320, 320) ]
+    for x in range(2):
+        gw = MyGateway()
+        gws.append(gw)
+        sim.addNode(gw, gw_positions[x])
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
     sleep(1)
