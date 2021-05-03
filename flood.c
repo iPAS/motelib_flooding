@@ -43,15 +43,6 @@ void hist_init()
 
 
 static
-void hist_update_delivery_info(delivery_history_t *hist, RoutingHeader *hdr)
-{
-    memcpy(&hist->recvHdr, hdr, sizeof(hist->recvHdr));
-    //hist->parent = source;  // XXX: cannot updated here, depended on message type as well.
-    hist->currSeqNo = hdr->seqNo;
-}
-
-
-static
 delivery_history_t *hist_find(RoutingHeader *hdr)
 {
     delivery_history_t *hist = delivery_history,
@@ -93,7 +84,8 @@ delivery_history_t *hist_find(RoutingHeader *hdr)
     hist = (free_hist != NULL)? free_hist : oldest_hist;
     hist->available = true;
     hist->timestamp = now;
-    hist_update_delivery_info(hist, hdr);
+    memcpy(&hist->recvHdr, hdr, sizeof(hist->recvHdr));
+    hist->currSeqNo = hdr->seqNo - 1;  // Believe in the sender
     hist->parent = BROADCAST_ADDR;  // Back to none again.
     return hist;
 }
@@ -259,8 +251,8 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
         }
     }
 
-    // Save the history
-    hist_update_delivery_info(hist, hdr);
+    // Save the header to history table
+    memcpy(&hist->recvHdr, hdr, sizeof(hist->recvHdr));
 }
 
 
