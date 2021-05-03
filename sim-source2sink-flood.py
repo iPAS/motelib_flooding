@@ -266,7 +266,7 @@ if __name__ == '__main__':
             sim.addNode(node, pos)
             nodes.append(node)
 
-    sim.addNode(MyGateway(), (320,320))
+    sim.addNode(MyGateway(), (320,320))  # TODO: multisource testing
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
     sleep(1)
