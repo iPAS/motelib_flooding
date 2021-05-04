@@ -65,16 +65,15 @@ class MySimGateway(SimGateway):
         sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
     ###################
-    def send_to_nodeid(self, node_id, msg):
+    def send_to(self, dest, msg):
         if isinstance(msg, str):
             msg = strToList(msg)
 
         self.msgSeqNo += 1
         sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
-        msg = [self.msgSeqNo, FLOOD_MSG_TYPE, self.nodeId%256, self.nodeId/256, 0x00, 0x00] + msg
+        msg = [self.msgSeqNo, FLOOD_MSG_TYPE, self.nodeId%256, self.nodeId/256, dest%256, dest/256] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
-
         self.debug('MySimGateway broadcasts: %s' % (msg))
 
 
@@ -211,29 +210,34 @@ def script():
     ###############
     print '<<<--- Flood routing protocol testing : node_label ==> (idno, seqno, besthop) --->>>'
 
-    simgw = simgws[1]  # XXX: test
+    simgw0 = simgws[0]
+    simgw1 = simgws[1]
 
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
 
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw0.send_to(dest=0, msg=[0x55, 0x55])
     sleep(3)
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
+    sleep(3)
+    simgw0.send_to(dest=0, msg=[0x55, 0x55])
+    sleep(3)
+    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
     sleep(3)
 
     print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
-    set_simgw_sequence(simgw, 0)  # Emulate Gateway dead
+    set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     sleep(1)
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
     sleep(3)
 
     print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
-    set_simgw_sequence(simgw, 0)  # Emulate Gateway dead
+    set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     nodes_down([7, 8])
     sleep(1)
     nodes_up([7, 8])
     sleep(2)
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
     sleep(3)
 
     raw_input('Press ENTER key to quit...')
