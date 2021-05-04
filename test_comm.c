@@ -21,6 +21,7 @@ void boot()
 
     buttonSetHandler(button);
 
+    srand(getAddress());  // Set random seed
     flood_init();
     flood_set_rx_handler(on_approach_sink);
 }

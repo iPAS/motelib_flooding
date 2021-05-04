@@ -11,6 +11,8 @@
 #define MAX_HOP         255
 #define WAIT_PARENT     10000
 
+#define MAX_HISTORY     16
+
 typedef struct
 {
     uint8_t seqNo;
