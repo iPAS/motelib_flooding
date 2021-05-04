@@ -4,6 +4,15 @@
 
 static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
 
+static
+bool rebroadcast(void *message, uint8_t len)
+{
+    RoutingHeader *hdr = (RoutingHeader*)message;
+    hdr->hopCount++;
+    return cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, hdr, sizeof(*hdr));  // XXX: for debugging
+    return cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, message, len);
+}
+
 
 /**
  * On packet received
@@ -49,11 +58,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 // -----------
                 // Rebroadcast
                 // -----------
-                RoutingHeader fwd_hdr;
-                memcpy(&fwd_hdr, hdr, sizeof(fwd_hdr));
-                fwd_hdr.hopCount++;
-                cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
-                // TODO: also forward data further than header.
+                rebroadcast(message, len);
             }
 
         }
