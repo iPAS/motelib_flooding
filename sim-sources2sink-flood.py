@@ -28,6 +28,8 @@ simgws = []
 nodes = []
 firmware = 'build/sim/test_comm.elf'
 
+payload = [i for i in range(80)]
+
 node_label_3l = lambda id, seqno, hop : '%d\n%d,%d' % (id, seqno, hop)
 node_label_2l = lambda id, seqno      : '%d\n%d'    % (id, seqno)
 
@@ -227,13 +229,13 @@ def script():
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
 
-    simgw0.send_to(dest=0, msg=[0x55, 0x55])
+    simgw0.send_to(dest=0, msg=payload)
     sleep(3)
-    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
+    simgw1.send_to(dest=0, msg=payload)
     sleep(3)
-    simgw0.send_to(dest=0, msg=[0x55, 0x55])
+    simgw0.send_to(dest=0, msg=payload)
     sleep(3)
-    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
+    simgw1.send_to(dest=0, msg=payload)
     sleep(3)
 
     nodes_down([7, 8])
@@ -241,7 +243,7 @@ def script():
     print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
     set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     sleep(1)
-    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
+    simgw1.send_to(dest=0, msg=payload)
     sleep(3)
 
     print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
@@ -250,7 +252,7 @@ def script():
     sleep(1)
     nodes_up([7, 8])
     sleep(2)
-    simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
+    simgw1.send_to(dest=0, msg=payload)
     sleep(3)
 
     raw_input('Press ENTER key to quit...')

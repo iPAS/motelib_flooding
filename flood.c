@@ -9,7 +9,7 @@ bool rebroadcast(void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
     hdr->hopCount++;
-    return cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, hdr, sizeof(*hdr));  // XXX: for debugging
+    // return cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, hdr, sizeof(*hdr));  // XXX: for debugging
     return cq_send(BROADCAST_ADDR, FLOOD_MSG_TYPE, message, len);
 }
 
