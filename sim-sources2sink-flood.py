@@ -11,10 +11,20 @@ from threading import Thread
 FLOOD_MSG_TYPE  = 0x01
 REPORT_MSG_TYPE = 0x22
 
-NUMBER_OF_GW = 1
-
 gws = []
+gw_positions = [ (320, 55), (320, 320) ]
+gw_styles = {
+    0:  {
+            'name'  : 'gw0_style',
+            'color' : [0,0,1.]
+        },
+    1:  {
+            'name'  : 'gw1_style',
+            'color' : [1.,0,0]
+        }
+    }
 simgws = []
+
 nodes = []
 firmware = 'build/sim/test_comm.elf'
 
@@ -103,9 +113,10 @@ class MyMote(Mote):
         if msg.find('Change parent from') >= 0:  # In set_besthop(..)
             self.old_parent = int(txt[3])
             self.new_parent = int(txt[5])
+            self.origin = int(txt[8])
             if self.old_parent != 0xFFFF:
-                sim.scene.dellink(self.id, self.old_parent, 'my_style')
-            sim.scene.addlink(self.id, self.new_parent, 'my_style')
+                sim.scene.dellink(self.id, self.old_parent, gw_styles[self.origin]['name'])
+            sim.scene.addlink(self.id, self.new_parent, gw_styles[self.origin]['name'])
 
         elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
             self.seqno = int(txt[6])
@@ -127,19 +138,19 @@ class MyMote(Mote):
 
     ###################
     def shutdown(self):
-        # Delete fan-out
-        try:
-            sim.scene.dellink(self.id, self.new_parent, 'my_style')
-        except:
-            pass
+        # Delete all fan-in / fan-out of the node
+        for n in sim.nodes.values():
+            if n.id != self.id:
+                for style in gw_styles.values():
+                    try:
+                        sim.scene.dellink(n.id, self.id, style['name'])
+                    except:
+                        pass
+                    try:
+                        sim.scene.dellink(self.id, n.id, style['name'])
+                    except:
+                        pass
 
-        # Delete fan-in
-        # for n in sim.nodes:
-        #     if n.id > 0:
-        #         try:
-        #             sim.scene.dellink(n.id, self.id, 'my_style')
-        #         except:
-        #             pass
         Mote.shutdown(self)
 
 
@@ -225,6 +236,8 @@ def script():
     simgw1.send_to(dest=0, msg=[0xAA, 0xAA])
     sleep(3)
 
+    nodes_down([7, 8])
+
     print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
     set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     sleep(1)
@@ -256,13 +269,14 @@ if __name__ == '__main__':
             sim.addNode(node, pos)
             nodes.append(node)
 
-    gw_positions = [ (320, 55), (320, 320) ]
     for x in range(2):
         gw = MyGateway()
         gws.append(gw)
         sim.addNode(gw, gw_positions[x])
 
-    sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
+        sim.scene.linestyle(gw_styles[x]['name'], color=gw_styles[x]['color'] , dash=(1,2,2,2), arrow='head')
+        gw_styles[gw.id] = gw_styles.pop(x)
+
     sleep(1)
 
     sim.run(bootMotes=False, script=script)

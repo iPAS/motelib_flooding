@@ -25,7 +25,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             )
         {
             // Update parent
-            debug("Change parent from %d to %d", hist->parent, source);
+            debug("Change parent from %d to %d on origin %d", hist->parent, source, hdr->originSource);
             hist->parent = source;
             debug("New best hop %d", hdr->hopCount);
 
@@ -77,7 +77,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
             // --------------------------------------
             // Report back to the sender -- 'source'.
             // --------------------------------------
-            debug("Report seqNo %d < current %d to node %d", hdr->seqNo, hist->currSeqNo, source);
+            debug("Report seqNo %d < %d to node %d", hdr->seqNo, hist->currSeqNo, source);
 
             // Tell the upper node -- current sender -- that this node has a greater seqNo.
             // Report it back, up until the first hop.
@@ -106,7 +106,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                     // -----------------------------------------
                     // Next hop to be reported is node's parent.
                     // -----------------------------------------
-                    debug("Report seqNo %d forwarded from node %d to parent %d", hdr->seqNo, source, hist->parent);
+                    debug("Report forward seqNo %d from node %d to parent %d", hdr->seqNo, source, hist->parent);
 
                     RoutingHeader fwd_hdr;
                     memcpy(&fwd_hdr, hdr, sizeof(fwd_hdr));
