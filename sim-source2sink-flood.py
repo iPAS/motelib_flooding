@@ -11,9 +11,7 @@ from threading import Thread
 FLOOD_MSG_TYPE  = 0x01
 REPORT_MSG_TYPE = 0x22
 
-NUMBER_OF_GW = 1
-
-sim_port = ''
+gw       = None
 simgw    = None
 nodes    = []
 firmware = 'build/sim/test_comm.elf'
@@ -65,16 +63,15 @@ class MySimGateway(SimGateway):
         sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
     ###################
-    def send_to_nodeid(self, node_id, msg):
+    def send_to(self, dest, msg):
         if isinstance(msg, str):
             msg = strToList(msg)
 
         self.msgSeqNo += 1
         sim.scene.nodelabel(self.nodeId, node_label_2l(self.nodeId, self.msgSeqNo))
 
-        msg = [self.msgSeqNo, FLOOD_MSG_TYPE, self.nodeId%256, self.nodeId/256, 0x00, 0x00] + msg
+        msg = [self.msgSeqNo, FLOOD_MSG_TYPE, self.nodeId%256, self.nodeId/256, dest%256, dest/256] + msg
         SimGateway.send(self, dest=BROADCAST_ADDR, msgType=FLOOD_MSG_TYPE, msg=msg)
-
         self.debug('MySimGateway broadcasts: %s' % (msg))
 
 
@@ -83,9 +80,9 @@ class MyGateway(Gateway):
 
     ###################
     def debug(self, msg):
-        if msg.find('Gateway starts listening on port') >= 0:
-            global sim_port
-            sim_port = msg.split(' ')[5]  # Server port
+        # if msg.find('Gateway starts listening on port') >= 0:
+        #     self.wait_simgw_port = msg.split(' ')[5]  # Server port
+        #     Gateway.debug(self, 'port: %s %s' % (self.wait_simgw_port, self.listen_port))
         Gateway.debug(self, msg)
 
     ###################
@@ -128,19 +125,18 @@ class MyMote(Mote):
 
     ###################
     def shutdown(self):
-        # Delete fan-out
-        try:
-            sim.scene.dellink(self.id, self.new_parent, 'my_style')
-        except:
-            pass
+        # Delete all fan-in / fan-out of the node
+        for n in sim.nodes.values():
+            if n.id != self.id:
+                try:
+                    sim.scene.dellink(n.id, self.id, 'my_style')
+                except:
+                    pass
+                try:
+                    sim.scene.dellink(self.id, n.id, 'my_style')
+                except:
+                    pass
 
-        # Delete fan-in
-        # for n in sim.nodes:
-        #     if n.id > 0:
-        #         try:
-        #             sim.scene.dellink(n.id, self.id, 'my_style')
-        #         except:
-        #             pass
         Mote.shutdown(self)
 
 
@@ -170,11 +166,8 @@ def script():
     # Get started!
     print '<<< Script gets started >>>'
 
-    while sim_port == '':
-        sleep(1)  # Wait for MyGateway.debug() ...
-
-    global simgw
-    simgw = MySimGateway('localhost:'+sim_port, sim=sim)
+    global gw, simgw
+    simgw = MySimGateway('localhost:{}'.format(gw.listen_port), sim=sim)
 
 
     ###############
@@ -216,15 +209,15 @@ def script():
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
 
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to(dest=0, msg=[0x55, 0x55])
     sleep(3)
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to(dest=0, msg=[0x55, 0x55])
     sleep(3)
 
     print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
     set_simgw_sequence(simgw, 0)  # Emulate Gateway dead
     sleep(1)
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to(dest=0, msg=[0x55, 0x55])
     sleep(3)
 
     print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
@@ -233,7 +226,7 @@ def script():
     sleep(1)
     nodes_up([7, 8])
     sleep(2)
-    simgw.send_to_nodeid(node_id=0, msg=[0x55, 0x55])
+    simgw.send_to(dest=0, msg=[0x55, 0x55])
     sleep(3)
 
     raw_input('Press ENTER key to quit...')
@@ -252,7 +245,8 @@ if __name__ == '__main__':
             sim.addNode(node, pos)
             nodes.append(node)
 
-    sim.addNode(MyGateway(), (320,320))
+    gw = MyGateway()
+    sim.addNode(gw, (320,320))
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
     sleep(1)
