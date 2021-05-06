@@ -2,6 +2,7 @@ from motesim import Simulator, Mote, Gateway
 from motesim.SimGateway import BROADCAST_ADDR, Gateway as SimGateway
 from motesim.MoteSim import strToList, listToStr
 
+import sys
 import random
 from time import sleep
 
@@ -249,6 +250,9 @@ if __name__ == '__main__':
     sim.addNode(gw, (320,320))
 
     sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
+
     sleep(1)
 
+    if len(sys.argv) > 1 and sys.argv[1] == '--wait':
+        raw_input('Press ENTER key to start...')
     sim.run(bootMotes=False, script=script)
