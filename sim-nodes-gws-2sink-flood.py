@@ -14,15 +14,19 @@ REPORT_MSG_TYPE = 0x22
 
 gws = []
 gw_positions = [ (320, 55), (320, 320) ]
-gw_styles = {
+line_styles = {
     0:  {
-            'name'  : 'gw0_style',
+            'name'  : 'gw9_style',
             'color' : [0,0,1.]
         },
     1:  {
-            'name'  : 'gw1_style',
+            'name'  : 'gw10_style',
             'color' : [1.,0,0]
-        }
+        },
+    2:  {
+            'name'  : 'node8_style',
+            'color' : [.2,.8,.2]
+        },
     }
 simgws = []
 
@@ -111,15 +115,20 @@ class MyMote(Mote):
 
     ###################
     def debug(self, msg):
+        # Mote.debug(self, msg)  # XXX: for debugging
         txt = msg.split(' ')
 
-        if msg.find('Change parent from') >= 0:  # In set_besthop(..)
+        if msg.find('Tx to finalSink') >= 0:  # In flood_send_to(..)
+            self.seqno = int(txt[6])
+            sim.scene.nodelabel(self.id, node_label_3l(self.id, self.seqno, self.besthop))
+
+        elif msg.find('Change parent from') >= 0:  # In set_besthop(..)
             self.old_parent = int(txt[3])
             self.new_parent = int(txt[5])
             self.origin = int(txt[8])
             if self.old_parent != 0xFFFF:
-                sim.scene.dellink(self.id, self.old_parent, gw_styles[self.origin]['name'])
-            sim.scene.addlink(self.id, self.new_parent, gw_styles[self.origin]['name'])
+                sim.scene.dellink(self.id, self.old_parent, line_styles[self.origin]['name'])
+            sim.scene.addlink(self.id, self.new_parent, line_styles[self.origin]['name'])
 
         elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
             self.seqno = int(txt[6])
@@ -134,7 +143,7 @@ class MyMote(Mote):
 
     ###################
     def boot(self):
-        self.seqno   = 0
+        self.seqno = 0
         self.besthop = 255
         sim.scene.nodelabel(self.id, node_label_2l(self.id, 0))
         Mote.boot(self)
@@ -144,7 +153,7 @@ class MyMote(Mote):
         # Delete all fan-in / fan-out of the node
         for n in sim.nodes.values():
             if n.id != self.id:
-                for style in gw_styles.values():
+                for style in line_styles.values():
                     try:
                         sim.scene.dellink(n.id, self.id, style['name'])
                     except:
@@ -249,6 +258,8 @@ def script():
     nodes_up(range(len(nodes)))
 
     nodes_push_button([8])
+    raw_input('Press ENTER key to quit...')
+    sim.tkplot.tk.quit()
     return
 
     simgw0.send_to(dest=0, msg=payload)
@@ -301,8 +312,10 @@ if __name__ == '__main__':
         gws.append(gw)
         sim.addNode(gw, gw_positions[x])
 
-        sim.scene.linestyle(gw_styles[x]['name'], color=gw_styles[x]['color'] , dash=(1,2,2,2), arrow='head')
-        gw_styles[gw.id] = gw_styles.pop(x)
+    ids_to_styles = [gws[0].id, gws[1].id, nodes[-1].id]
+    for x, id in enumerate(ids_to_styles):
+        sim.scene.linestyle(line_styles[x]['name'], color=line_styles[x]['color'] , dash=(1,2,2,2), arrow='head')
+        line_styles[id] = line_styles.pop(x)
 
     sleep(1)
 
