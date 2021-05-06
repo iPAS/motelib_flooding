@@ -129,13 +129,24 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
 
 /**
- * Send & receive by flood routing
+ * Set the callback function on reception.
  */
 void flood_set_rx_handler(on_rx_sink fn)
 {
     on_approach_sink = fn;
 }
 
+
+/**
+ * Send to
+ */
+bool flood_send_to(Address dst, void *msg, uint8_t len)
+{
+    RoutingHeader hdr;
+    // hdr.finalSink = dst;
+    // hdr.seqNo
+    return  true;  //cq_send(hist->parent, FLOOD_MSG_TYPE, &fwd_hdr, sizeof(fwd_hdr));
+}
 
 /**
  * Init
