@@ -158,14 +158,14 @@ class MyMote(Mote):
 
 
 ###################################
-def nodes_up(nodes):
-    for n in nodes:
-        sim.nodes[n].boot()
+def nodes_up(ids):
+    for i in ids:
+        sim.nodes[i].boot()
 
 
-def nodes_down(nodes):
-    for n in nodes:
-        sim.nodes[n].shutdown()
+def nodes_down(ids):
+    for i in ids:
+        sim.nodes[i].shutdown()
 
 
 def set_simgw_sequence(simgw, seqno):
@@ -255,6 +255,7 @@ def script():
     sleep(2)
     simgw1.send_to(dest=0, msg=payload)
     sleep(3)
+
 
     raw_input('Press ENTER key to quit...')
     sim.tkplot.tk.quit()
