@@ -2,6 +2,7 @@
 #include "delivery_hist.h"
 
 
+static uint8_t txSeqNo;
 static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
 
 static
@@ -21,14 +22,25 @@ static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
-    delivery_history_t *hist = hist_find(hdr);  // Historical data based on 'originSource'
+    delivery_history_t *hist;
+    hist = (hdr->originSource == getAddress())? // Historical data based on the 'originSource'.
+        NULL : hist_find(hdr);                  // It could be NULL if the 'originSource' is here.
 
     // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
     {
+        // ---------------------------------------------
+        // Flood message is back to the origin, discard!
+        // ---------------------------------------------
+        if (hdr->originSource == getAddress())
+        {
+           debug("Loopback message seqNo %d from node %d, discard", hdr->seqNo, source);
+        }
+
         // --------------------------------
         // Flood message received correctly
         // --------------------------------
+        else
         if (hdr->seqNo > hist->currSeqNo  ||
             (hdr->seqNo == 0 && hist->currSeqNo == 255)  // On overflow
             )
@@ -99,6 +111,24 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     {
         if (hdr->hopCount < MAX_HOP)
         {
+            // --------------------------------------------------------------------
+            // The 'originSource' got suggestion with the greater-seqNo correction.
+            // --------------------------------------------------------------------
+            if (hdr->originSource == getAddress())
+            {
+                if (hdr->seqNo > txSeqNo  ||
+                    (hdr->seqNo == 0 && txSeqNo == 255)  // On overflow
+                    )
+                {
+                    debug("Change seqNo from current %d to %d by suggestion", txSeqNo, hdr->seqNo);
+                    txSeqNo = hdr->seqNo;
+                }
+            }
+
+            // ------------------------------
+            // Report message to be forwarded
+            // ------------------------------
+            else
             if (hdr->seqNo > hist->currSeqNo  ||
                 (hdr->seqNo == 0 && hist->currSeqNo == 255)  // On overflow
                 )
@@ -156,6 +186,7 @@ void flood_init(void)
     cq_init();  // Initial communication queue
     hist_init();  // Initial delivery history for memeorizing a received packet.
 
+    txSeqNo = 0;
     on_approach_sink = NULL;
     radioSetRxHandler(on_receive);
 }
