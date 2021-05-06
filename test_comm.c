@@ -5,7 +5,16 @@ void button(ButtonStatus s)
 {
     // Toggle LED#1 whenever the button is pressed
     if (s == BUTTON_PRESSED)
-        ledToggle(1);
+    {
+        // ledToggle(0);
+        // ledToggle(1);
+        // ledToggle(2);
+        ledSet(0, 1);
+    }
+    else
+    {
+        ledSet(0, 0);
+    }
 }
 
 
