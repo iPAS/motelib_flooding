@@ -9,6 +9,17 @@
         "flood.h": "c",
         "queue.h": "c",
         "commqueue.h": "c",
-        "delivery_hist.h": "c"
+        "delivery_hist.h": "c",
+        "bit": "c",
+        "array": "c",
+        "bitset": "c",
+        "deque": "c",
+        "list": "c",
+        "map": "c",
+        "*.tcc": "c",
+        "set": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "vector": "c"
     }
 }

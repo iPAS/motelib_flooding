@@ -1,4 +1,4 @@
-from motesim import Simulator, Mote, Gateway
+from motesim import Simulator, Mote, Gateway, LEDS_CONFIG
 from motesim.SimGateway import BROADCAST_ADDR, Gateway as SimGateway
 from motesim.MoteSim import strToList, listToStr
 
@@ -12,10 +12,28 @@ from threading import Thread
 FLOOD_MSG_TYPE  = 0x01
 REPORT_MSG_TYPE = 0x22
 
-gw       = None
-simgw    = None
-nodes    = []
+gws = []
+gw_positions = [ (320, 55), (320, 320) ]
+line_styles = {
+    0:  {
+            'name'  : 'gw9_style',
+            'color' : [0,0,1.]
+        },
+    1:  {
+            'name'  : 'gw10_style',
+            'color' : [1.,0,0]
+        },
+    2:  {
+            'name'  : 'node8_style',
+            'color' : [.2,.8,.2]
+        },
+    }
+simgws = []
+
+nodes = []
 firmware = 'build/sim/test_comm.elf'
+
+payload = [i for i in range(90)]
 
 node_label_3l = lambda id, seqno, hop : '%d\n%d,%d' % (id, seqno, hop)
 node_label_2l = lambda id, seqno      : '%d\n%d'    % (id, seqno)
@@ -97,14 +115,20 @@ class MyMote(Mote):
 
     ###################
     def debug(self, msg):
+        # Mote.debug(self, msg)  # XXX: for debugging
         txt = msg.split(' ')
 
-        if msg.find('Change parent from') >= 0:  # In set_besthop(..)
+        if msg.find('Tx to finalSink') >= 0:  # In flood_send_to(..)
+            self.seqno = int(txt[6])
+            sim.scene.nodelabel(self.id, node_label_3l(self.id, self.seqno, self.besthop))
+
+        elif msg.find('Change parent from') >= 0:  # In set_besthop(..)
             self.old_parent = int(txt[3])
             self.new_parent = int(txt[5])
+            self.origin = int(txt[8])
             if self.old_parent != 0xFFFF:
-                sim.scene.dellink(self.id, self.old_parent, 'my_style')
-            sim.scene.addlink(self.id, self.new_parent, 'my_style')
+                sim.scene.dellink(self.id, self.old_parent, line_styles[self.origin]['name'])
+            sim.scene.addlink(self.id, self.new_parent, line_styles[self.origin]['name'])
 
         elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
             self.seqno = int(txt[6])
@@ -119,7 +143,7 @@ class MyMote(Mote):
 
     ###################
     def boot(self):
-        self.seqno   = 0
+        self.seqno = 0
         self.besthop = 255
         sim.scene.nodelabel(self.id, node_label_2l(self.id, 0))
         Mote.boot(self)
@@ -129,27 +153,36 @@ class MyMote(Mote):
         # Delete all fan-in / fan-out of the node
         for n in sim.nodes.values():
             if n.id != self.id:
-                try:
-                    sim.scene.dellink(n.id, self.id, 'my_style')
-                except:
-                    pass
-                try:
-                    sim.scene.dellink(self.id, n.id, 'my_style')
-                except:
-                    pass
+                for style in line_styles.values():
+                    try:
+                        sim.scene.dellink(n.id, self.id, style['name'])
+                    except:
+                        pass
+                    try:
+                        sim.scene.dellink(self.id, n.id, style['name'])
+                    except:
+                        pass
 
         Mote.shutdown(self)
 
 
 ###################################
-def nodes_up(nodes):
-    for n in nodes:
-        sim.nodes[n].boot()
+def nodes_up(ids):
+    for i in ids:
+        sim.nodes[i].boot()
 
 
-def nodes_down(nodes):
-    for n in nodes:
-        sim.nodes[n].shutdown()
+def nodes_down(ids):
+    for i in ids:
+        sim.nodes[i].shutdown()
+
+
+def nodes_push_button(ids, hold_duration=1.):
+    for i in ids:
+        sim.nodes[i].pressButton()
+    sleep(hold_duration)
+    for i in ids:
+        sim.nodes[i].releaseButton()
 
 
 def set_simgw_sequence(simgw, seqno):
@@ -159,16 +192,27 @@ def set_simgw_sequence(simgw, seqno):
 
 ###################################
 def script():
+    global gws, simgws, LEDS_CONFIG
+
     # Beautify the network graph
-    for n in range(len(nodes)+1):  # Plus one for the gw
+    NEW_LED_CONFIG = [
+        [ [ 10,  2], [1.0, 0.0, 0.0] ],  #[ [ 5, 5], [1.0, 0.0, 0.0] ],
+        [ [ 10,  7], [0.2, 0.8, 0.2] ],  #[ [ 0, 5], [0.8, 0.8, 0.0] ],
+        [ [ 10, 13], [0.0, 0.0, 1.0] ],  #[ [-5, 5], [0.0, 0.9, 0.0] ],
+    ]
+    for i, cfg in enumerate(LEDS_CONFIG):
+        # cfg[0] = map(lambda x: x+5, cfg[0])
+        cfg[0] = NEW_LED_CONFIG[i][0]
+        cfg[1] = NEW_LED_CONFIG[i][1]
+
+    for n in range(len(nodes)+len(gws)):  # Plus one for the gw
         sim.scene.nodescale(n, 2.)
         sim.scene.nodelabel(n, node_label_2l(n, 0))
 
     # Get started!
     print '<<< Script gets started >>>'
-
-    global gw, simgw
-    simgw = MySimGateway('localhost:{}'.format(gw.listen_port), sim=sim)
+    for gw in gws:
+        simgws.append(MySimGateway('localhost:{}'.format(gw.listen_port), sim=sim))
 
 
     ###############
@@ -207,28 +251,46 @@ def script():
     ###############
     print '<<<--- Flood routing protocol testing : node_label ==> (idno, seqno, besthop) --->>>'
 
+    simgw0 = simgws[0]
+    simgw1 = simgws[1]
+
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
 
-    simgw.send_to(dest=0, msg=[0x55, 0x55])
+    simgw0.send_to(dest=0, msg=payload)
     sleep(3)
-    simgw.send_to(dest=0, msg=[0x55, 0x55])
+    simgw1.send_to(dest=0, msg=payload)
+    sleep(3)
+    simgw0.send_to(dest=0, msg=payload)
+    sleep(3)
+    simgw1.send_to(dest=0, msg=payload)
     sleep(3)
 
+    nodes_down([7, 8])
+
     print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
-    set_simgw_sequence(simgw, 0)  # Emulate Gateway dead
+    set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     sleep(1)
-    simgw.send_to(dest=0, msg=[0x55, 0x55])
+    simgw1.send_to(dest=0, msg=payload)
     sleep(3)
 
     print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
-    set_simgw_sequence(simgw, 0)  # Emulate Gateway dead
+    set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     nodes_down([7, 8])
     sleep(1)
     nodes_up([7, 8])
     sleep(2)
-    simgw.send_to(dest=0, msg=[0x55, 0x55])
+    simgw1.send_to(dest=0, msg=payload)
     sleep(3)
+
+    print '<<<--- Node starts sending as an originSource --->>>'
+    nodes_push_button([8])
+    sleep(3)
+    nodes_push_button([8])
+    sleep(3)
+    nodes_push_button([8])
+    sleep(3)
+    nodes_push_button([8])
 
     raw_input('Press ENTER key to quit...')
     sim.tkplot.tk.quit()
@@ -246,10 +308,15 @@ if __name__ == '__main__':
             sim.addNode(node, pos)
             nodes.append(node)
 
-    gw = MyGateway()
-    sim.addNode(gw, (320,320))
+    for x in range(2):
+        gw = MyGateway()
+        gws.append(gw)
+        sim.addNode(gw, gw_positions[x])
 
-    sim.scene.linestyle("my_style", color=[0,0,0] , dash=(1,2,2,2), arrow='head')
+    ids_to_styles = [gws[0].id, gws[1].id, nodes[-1].id]
+    for x, id in enumerate(ids_to_styles):
+        sim.scene.linestyle(line_styles[x]['name'], color=line_styles[x]['color'] , dash=(1,2,2,2), arrow='head')
+        line_styles[id] = line_styles.pop(x)
 
     sleep(1)
 

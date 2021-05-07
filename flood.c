@@ -2,10 +2,15 @@
 #include "delivery_hist.h"
 
 
+static uint8_t txSeqNo;
 static on_rx_sink on_approach_sink;  // Handler called if being the last node in the route.
 
+
+/**
+ * Broadcast the message
+ */
 static
-bool rebroadcast(void *message, uint8_t len)
+bool broadcast(void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
     hdr->hopCount++;
@@ -21,14 +26,27 @@ static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
-    delivery_history_t *hist = hist_find(hdr);  // Historical data based on 'originSource'
+    delivery_history_t *hist;
+
+    // Historical data based on the 'originSource'.
+    // It could be NULL if the 'originSource' is here.
+    hist = (hdr->originSource == getAddress())? NULL : hist_find(hdr);
 
     // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
     {
+        // ---------------------------------------------
+        // Flood message is back to the origin, discard!
+        // ---------------------------------------------
+        if (hdr->originSource == getAddress())
+        {
+           debug("Loopback message seqNo %d from node %d, discard", hdr->seqNo, source);
+        }
+
         // --------------------------------
         // Flood message received correctly
         // --------------------------------
+        else
         if (hdr->seqNo > hist->currSeqNo  ||
             (hdr->seqNo == 0 && hist->currSeqNo == 255)  // On overflow
             )
@@ -58,7 +76,7 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
                 // -----------
                 // Rebroadcast
                 // -----------
-                rebroadcast(message, len);
+                broadcast(message, len);
             }
 
         }
@@ -99,6 +117,24 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     {
         if (hdr->hopCount < MAX_HOP)
         {
+            // --------------------------------------------------------------------
+            // The 'originSource' got suggestion with the greater-seqNo correction.
+            // --------------------------------------------------------------------
+            if (hdr->originSource == getAddress())
+            {
+                if (hdr->seqNo > txSeqNo  ||
+                    (hdr->seqNo == 0 && txSeqNo == 255)  // On overflow
+                    )
+                {
+                    debug("Change seqNo from current %d to %d by suggestion", txSeqNo, hdr->seqNo);
+                    txSeqNo = hdr->seqNo;
+                }
+            }
+
+            // ------------------------------
+            // Report message to be forwarded
+            // ------------------------------
+            else
             if (hdr->seqNo > hist->currSeqNo  ||
                 (hdr->seqNo == 0 && hist->currSeqNo == 255)  // On overflow
                 )
@@ -124,16 +160,41 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
     }
 
     // Save the header to history table
-    memcpy(&hist->latestHdr, hdr, sizeof(hist->latestHdr));
+    if (hist != NULL)
+        memcpy(&hist->latestHdr, hdr, sizeof(hist->latestHdr));
 }
 
 
 /**
- * Send & receive by flood routing
+ * Set the callback function on reception.
  */
 void flood_set_rx_handler(on_rx_sink fn)
 {
     on_approach_sink = fn;
+}
+
+
+/**
+ * Send to
+ */
+bool flood_send_to(Address sink, void *msg, uint8_t len)
+{
+    debug("Tx to finalSink %d with seqNo %d ", sink, txSeqNo);
+
+    uint8_t length = sizeof(RoutingHeader) + len;
+    uint8_t *message = malloc(length);
+
+    RoutingHeader *hdr = (void *)message;
+    hdr->seqNo = txSeqNo++;
+    hdr->hopCount = 0;
+    hdr->originSource = getAddress();
+    hdr->finalSink = sink;
+    memcpy(&message[sizeof(RoutingHeader)], msg, len);
+
+    bool ret = broadcast(message, length);
+
+    free(message);
+    return ret;
 }
 
 
@@ -145,6 +206,7 @@ void flood_init(void)
     cq_init();  // Initial communication queue
     hist_init();  // Initial delivery history for memeorizing a received packet.
 
+    txSeqNo = 1;  // Other nodes will assume that 'originSource' has a greater seqNo than themselves.
     on_approach_sink = NULL;
     radioSetRxHandler(on_receive);
 }
