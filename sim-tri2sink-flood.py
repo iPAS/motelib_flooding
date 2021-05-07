@@ -33,7 +33,7 @@ simgws = []
 nodes = []
 firmware = 'build/sim/test_comm.elf'
 
-payload = [i for i in range(80)]
+payload = [i for i in range(90)]
 
 node_label_3l = lambda id, seqno, hop : '%d\n%d,%d' % (id, seqno, hop)
 node_label_2l = lambda id, seqno      : '%d\n%d'    % (id, seqno)
@@ -257,11 +257,6 @@ def script():
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
 
-    nodes_push_button([8])
-    raw_input('Press ENTER key to quit...')
-    sim.tkplot.tk.quit()
-    return
-
     simgw0.send_to(dest=0, msg=payload)
     sleep(3)
     simgw1.send_to(dest=0, msg=payload)
@@ -289,6 +284,12 @@ def script():
     sleep(3)
 
     print '<<<--- Node starts sending as an originSource --->>>'
+    nodes_push_button([8])
+    sleep(3)
+    nodes_push_button([8])
+    sleep(3)
+    nodes_push_button([8])
+    sleep(3)
     nodes_push_button([8])
 
     raw_input('Press ENTER key to quit...')
