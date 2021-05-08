@@ -14,5 +14,7 @@
 #include <motelib/button.h>
 #include <pt/pt.h>
 
+#include "bind.h"
 
-#endif  // __ALL_HEADERS__
+
+#endif  // __ALL_HEADERS_H__
