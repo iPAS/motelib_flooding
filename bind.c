@@ -6,9 +6,9 @@ void zTimerCreate(zTimer *timer)
     timerCreate(timer);
 }
 
-void zTimerStart(zTimer *timer, TimerType type, uint16_t interval, TimerFired timerFired)
+void zTimerStart(zTimer *timer, TimerType type, uint16_t interval, zTimerFired onFired)
 {
-    timerStart(timer, type, interval, timerFired);
+    timerStart(timer, type, interval, onFired);
 }
 
 void zTimerStop(Timer *timer)

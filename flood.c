@@ -177,14 +177,14 @@ void flood_set_rx_handler(on_rx_sink fn)
 /**
  * Send to
  */
-bool flood_send_to(Address sink, void *msg, uint8_t len)
+bool flood_send_to(Address sink, const void *msg, uint8_t len)
 {
     debug("Tx to finalSink %d with seqNo %d ", sink, txSeqNo);
 
     uint8_t length = sizeof(RoutingHeader) + len;
-    uint8_t *message = malloc(length);
+    uint8_t *message = (uint8_t *)malloc(length);
 
-    RoutingHeader *hdr = (void *)message;
+    RoutingHeader *hdr = (RoutingHeader *)message;
     hdr->seqNo = txSeqNo++;
     hdr->hopCount = 0;
     hdr->originSource = getAddress();
