@@ -5,7 +5,7 @@
 #include "all_headers.h"
 
 typedef Timer zTimer;
-typedef void (*zTimerFired)(void *);
+typedef void (*zTimerFired)(zTimer *);
 
 extern void zTimerCreate(zTimer *timer);
 extern void zTimerStart(zTimer *timer, TimerType type, uint16_t interval, zTimerFired onFired);
