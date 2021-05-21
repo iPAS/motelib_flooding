@@ -20,6 +20,8 @@
         "set": "c",
         "string": "c",
         "unordered_map": "c",
-        "vector": "c"
+        "vector": "c",
+        "uart.h": "c",
+        "bind.h": "c"
     }
 }

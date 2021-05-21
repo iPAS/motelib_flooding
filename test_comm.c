@@ -2,7 +2,7 @@
 #include "flood.h"
 
 
-static Timer timerLed;
+static zTimer timerLed;
 static uint8_t message[] = {0,1,2,3,4,5,6,7,8,9};
 
 static void show_arr(uint8_t *arr, uint8_t arr_len)
@@ -41,7 +41,8 @@ void on_button_pushed(ButtonStatus s)
         // ledToggle(1);
         // ledToggle(2);
         ledSet(0, 1);
-        timerStart(&timerLed, TIMER_ONESHOT, 500, on_timer_fired_led_off);
+
+        zTimerStart(&timerLed, TIMER_ONESHOT, 500, on_timer_fired_led_off);
 
         flood_send_to(0, message, sizeof(message));
     }
@@ -66,7 +67,7 @@ void boot()
 {
     debug("Booting.. Addr:%d, PAN_ID:%d, CH:%d", getAddress(), getPanId(), getChannel());
 
-    timerCreate(&timerLed);
+    zTimerCreate(&timerLed);
     buttonSetHandler(on_button_pushed);
 
     srand(getAddress());  // Set random seed
