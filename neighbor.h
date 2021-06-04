@@ -5,7 +5,7 @@
 #include "all_headers.h"
 #include "flood.h"
 
-typedef struct __attribute__((packed))
+typedef struct
 {
     Address addr;
     uint32_t timestamp;
@@ -15,7 +15,7 @@ typedef struct __attribute__((packed))
 
 extern void neighbor_init();
 extern neighbor_t *neighbor_find(Address addr);
-extern neighbor_t *neighbor_table(uint8_t *len);
+extern neighbor_t *neighbor_table();
 
 
 #endif  // __NEIGHBOR_H__

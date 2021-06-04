@@ -216,9 +216,22 @@ bool flood_send_to(Address sink, const void *msg, uint8_t len)
  */
 bool flood_send_status_to(Address sink)
 {
-    uint8_t len;
-    neighbor_t *nb_table = neighbor_table(&len);
-    return flood_send_to(sink, nb_table, len*sizeof(neighbor_t));
+    neighbor_status_t status[MAX_NEIGHBOR];
+    neighbor_status_t *sts = status;
+    neighbor_t *nb = neighbor_table();
+    uint8_t cnt, i;
+    for (i = 0, cnt = 0; i < MAX_NEIGHBOR; i++, nb++)
+    {
+        if (nb->addr != BROADCAST_ADDR)
+        {
+            sts->addr = nb->addr;
+            sts->rssi = nb->rssi;
+            sts++;
+            cnt++;
+        }
+    }
+
+    return flood_send_to(sink, status, cnt*sizeof(neighbor_status_t));
 }
 
 

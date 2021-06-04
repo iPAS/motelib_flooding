@@ -19,7 +19,7 @@ void neighbor_init()
 }
 
 
-neighbor_t * neighbor_find(Address addr)
+neighbor_t *neighbor_find(Address addr)
 {
     neighbor_t *nb = neighbors,
                *nb_free = NULL,
@@ -61,9 +61,7 @@ neighbor_t * neighbor_find(Address addr)
 }
 
 
-neighbor_t *neighbor_table(uint8_t *len)
+neighbor_t *neighbor_table()
 {
-    if (len != NULL)
-        *len = MAX_NEIGHBOR;
     return neighbors;
 }
