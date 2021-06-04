@@ -292,6 +292,7 @@ def script():
     sleep(3)
     nodes_push_button([8])
 
+    sleep(10)
     raw_input('Press ENTER key to quit...')
     sim.tkplot.tk.quit()
 
