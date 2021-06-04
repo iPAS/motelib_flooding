@@ -283,14 +283,12 @@ def script():
     simgw1.send_to(dest=0, msg=payload)
     sleep(3)
 
+    sleep(3)
     print '<<<--- Node starts sending as an originSource --->>>'
-    nodes_push_button([8])
-    sleep(3)
-    nodes_push_button([8])
-    sleep(3)
-    nodes_push_button([8])
-    sleep(3)
-    nodes_push_button([8])
+    for i in range(4):
+        print '<<<--- push %d --->>>' % i
+        nodes_push_button([8])
+        sleep(4)
 
     sleep(10)
     raw_input('Press ENTER key to quit...')

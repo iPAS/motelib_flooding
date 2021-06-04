@@ -4,6 +4,9 @@
 static neighbor_t neighbors[MAX_NEIGHBOR];
 
 
+/**
+ * Neighbor information management
+ */
 void neighbor_init()
 {
     uint8_t i;
@@ -55,4 +58,12 @@ neighbor_t * neighbor_find(Address addr)
     nb = (nb_free != NULL)? nb_free : nb_oldest;
     nb->timestamp = now;
     return nb;
+}
+
+
+neighbor_t *neighbor_table(uint8_t *len)
+{
+    if (len != NULL)
+        *len = MAX_NEIGHBOR;
+    return neighbors;
 }

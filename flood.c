@@ -34,11 +34,9 @@ void on_receive(Address source, MessageType type, void *message, uint8_t len)
 
     neighbor_t *nb;
     nb = neighbor_find(source);  // Update date about our neighbor 'source'
-
-    // RadioRxStatus sts;
-    // radioGetRxStatus(&sts);
-
-
+    RadioRxStatus sts;
+    radioGetRxStatus(&sts);
+    nb->rssi = sts.rssi;
 
     // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
@@ -218,8 +216,9 @@ bool flood_send_to(Address sink, const void *msg, uint8_t len)
  */
 bool flood_send_status_to(Address sink)
 {
-    return false;
-    // return flood_send_to(sink, );
+    uint8_t len;
+    neighbor_t *nb_table = neighbor_table(&len);
+    return flood_send_to(sink, nb_table, len*sizeof(neighbor_t));
 }
 
 

@@ -12,7 +12,7 @@
 #define WAIT_PARENT     10000
 
 #define MAX_HISTORY     16  // XXX: maximum node sources that can exist.
-#define MAX_NEIGHBOR    16  // Max kept information of neighbors.
+#define MAX_NEIGHBOR    8  // Max kept information of neighbors.
 
 typedef struct __attribute__((packed))
 {

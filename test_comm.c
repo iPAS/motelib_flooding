@@ -34,6 +34,8 @@ void on_timer_fired_led_off()
 
 void on_button_pushed(ButtonStatus s)
 {
+    static uint8_t count = 0;
+
     // Toggle LED#1 whenever the button is pressed
     if (s == BUTTON_PRESSED)
     {
@@ -41,10 +43,13 @@ void on_button_pushed(ButtonStatus s)
         // ledToggle(1);
         // ledToggle(2);
         ledSet(0, 1);
-
         zTimerStart(&timerLed, TIMER_ONESHOT, 500, on_timer_fired_led_off);
 
-        flood_send_to(0, message, sizeof(message));
+
+        if (count++ < 2)
+            flood_send_to(0, message, sizeof(message));
+        else
+            flood_send_status_to(0);
     }
     else
     {
