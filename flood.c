@@ -27,18 +27,17 @@ static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
     RoutingHeader *hdr = (RoutingHeader*)message;
+
     delivery_history_t *hist;
+    hist = (hdr->originSource == getAddress())? NULL : hist_find(hdr);  // Historical data based on the 'originSource'.
+                                                                        // It could be NULL if the 'originSource' is here.
 
-    // Historical data based on the 'originSource'.
-    // It could be NULL if the 'originSource' is here.
-    hist = (hdr->originSource == getAddress())? NULL : hist_find(hdr);
-
-
+    neighbor_t *nb;
+    nb = neighbor_find(source);  // Update date about our neighbor 'source'
 
     // RadioRxStatus sts;
     // radioGetRxStatus(&sts);
 
-    
 
 
     // ------------------------------------------------------------------------
