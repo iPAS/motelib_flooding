@@ -56,6 +56,7 @@ neighbor_t *neighbor_find(Address addr)
 
     // In case of not found, select an available slot, or, the oldest.
     nb = (nb_free != NULL)? nb_free : nb_oldest;
+    nb->addr = addr;
     nb->timestamp = now;
     return nb;
 }
