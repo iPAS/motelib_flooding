@@ -32,8 +32,16 @@ static void show_arr(uint8_t *arr, uint8_t arr_len)
 typedef struct __attribute__((packed))  // For sending through the network.
 {
     Address addr;
-    uint8_t rssi;   // Degree 0-255
+    uint8_t rssi;   // Degree 0-255 of RSSI
 } neighbor_status_t;
+
+
+void on_neighbor_update(neighbor_t *nb)
+{
+    RadioRxStatus sts;
+    radioGetRxStatus(&sts);
+    nb->rssi = sts.rssi;
+}
 
 
 bool send_status_to(Address sink)
@@ -110,6 +118,8 @@ void boot()
     buttonSetHandler(on_button_pushed);
 
     srand(getAddress());  // Set random seed
+
     flood_init();
     flood_set_rx_handler(on_approach_sink);
+    neighbor_set_update_handler(on_neighbor_update);
 }

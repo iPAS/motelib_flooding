@@ -6,7 +6,7 @@
 #include "flood.h"
 
 
-#ifndef neighbor_t
+#ifdef NEIGHBOR_T
 typedef struct
 {
     Address addr;

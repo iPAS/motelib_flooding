@@ -5,6 +5,8 @@
 #include "all_headers.h"
 
 
+#define NEIGHBOR_T  // Define NEIGHBOR_T, to declare 'neighbor_t' in neighbor.h
+
 typedef Timer zTimer;
 typedef void (*zTimerFired)(zTimer *);
 
