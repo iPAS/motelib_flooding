@@ -208,37 +208,6 @@ bool flood_send_to(Address sink, const void *msg, uint8_t len)
 
 
 /**
- * Send node's status to
- */
-
-typedef struct __attribute__((packed))  // For sending through the network.
-{
-    Address addr;
-    uint8_t rssi;   // Degree 0-255
-    float snr;      // dB
-} neighbor_status_t;
-
-bool flood_send_status_to(Address sink)
-{
-    neighbor_status_t status[MAX_NEIGHBOR];
-    neighbor_status_t *sts = status;
-    neighbor_t *nb = neighbor_table();
-    uint8_t i, cnt;
-    for (i = 0, cnt = 0; i < MAX_NEIGHBOR; i++, nb++)
-    {
-        if (nb->addr != BROADCAST_ADDR)
-        {
-            sts->addr = nb->addr;
-            sts->rssi = nb->rssi;
-            sts++;
-            cnt++;
-        }
-    }
-    return flood_send_to(sink, status, cnt*sizeof(neighbor_status_t));
-}
-
-
-/**
  * Init
  */
 void flood_init(void)

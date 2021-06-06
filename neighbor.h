@@ -5,6 +5,7 @@
 #include "all_headers.h"
 #include "flood.h"
 
+
 #ifndef neighbor_t
 typedef struct
 {
@@ -12,14 +13,18 @@ typedef struct
     uint32_t timestamp;
 
     uint8_t rssi;
-    float snr;
 } neighbor_t;
 #endif
 
 extern void neighbor_init();
 extern neighbor_t *neighbor_find(Address addr);
-extern neighbor_t *neighbor_table();
+
+typedef void (*on_nb_update)(neighbor_t *nb);
+
+extern void neighbor_set_update_handler(on_nb_update callback);
 extern void neighbor_update_info(Address source);
+
+extern neighbor_t *neighbor_table();
 
 
 #endif  // __NEIGHBOR_H__

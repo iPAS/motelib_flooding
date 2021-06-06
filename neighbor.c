@@ -2,6 +2,7 @@
 
 
 static neighbor_t neighbors[MAX_NEIGHBOR];
+static on_nb_update on_update_info;
 
 
 /**
@@ -16,6 +17,14 @@ void neighbor_init()
         neighbors[i].timestamp = 0;
         neighbors[i].rssi = 0;
     }
+
+    on_update_info = NULL;
+}
+
+
+neighbor_t *neighbor_table()
+{
+    return neighbors;
 }
 
 
@@ -65,16 +74,16 @@ neighbor_t *neighbor_find(Address addr)
 /**
  * Update sending neighbor's information.
  */
-neighbor_t *neighbor_table()
-{
-    return neighbors;
-}
-
-
-
 void neighbor_update_info(Address source)
 {
     neighbor_t *nb = neighbor_find(source);
+
+    if (on_update_info != NULL)
+    {
+        (*on_update_info)(nb);
+        return;
+    }
+
     RadioRxStatus sts;
     radioGetRxStatus(&sts);
     nb->rssi = sts.rssi;
