@@ -24,12 +24,6 @@ typedef struct __attribute__((packed))
 
 typedef void (*on_rx_sink)(void *message, uint8_t len);
 
-typedef struct __attribute__((packed))  // For sending through the network.
-{
-    Address addr;
-    uint8_t rssi;
-} neighbor_status_t;
-
 extern void flood_init(void);
 extern void flood_set_rx_handler(on_rx_sink fn);
 extern bool flood_send_to(Address sink, const void *msg, uint8_t len);

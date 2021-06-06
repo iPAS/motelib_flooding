@@ -62,7 +62,20 @@ neighbor_t *neighbor_find(Address addr)
 }
 
 
+/**
+ * Update sending neighbor's information.
+ */
 neighbor_t *neighbor_table()
 {
     return neighbors;
+}
+
+
+
+void neighbor_update_info(Address source)
+{
+    neighbor_t *nb = neighbor_find(source);
+    RadioRxStatus sts;
+    radioGetRxStatus(&sts);
+    nb->rssi = sts.rssi;
 }

@@ -8,19 +8,6 @@ static on_rx_sink on_approach_sink;  // Handler called if being the last node in
 
 
 /**
- * Update sending neighbor's information.
- */
-static
-void update_neighbor_info(Address source)
-{
-    neighbor_t *nb = neighbor_find(source);
-    RadioRxStatus sts;
-    radioGetRxStatus(&sts);
-    nb->rssi = sts.rssi;
-}
-
-
-/**
  * Broadcast the message
  */
 static
@@ -39,7 +26,7 @@ bool broadcast(void *message, uint8_t len)
 static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
-    update_neighbor_info(source);  // Update date about our neighbor 'source'
+    neighbor_update_info(source);  // Update date about our neighbor 'source'
 
     RoutingHeader *hdr = (RoutingHeader*)message;
 
@@ -223,6 +210,14 @@ bool flood_send_to(Address sink, const void *msg, uint8_t len)
 /**
  * Send node's status to
  */
+
+typedef struct __attribute__((packed))  // For sending through the network.
+{
+    Address addr;
+    uint8_t rssi;   // Degree 0-255
+    float snr;      // dB
+} neighbor_status_t;
+
 bool flood_send_status_to(Address sink)
 {
     neighbor_status_t status[MAX_NEIGHBOR];
