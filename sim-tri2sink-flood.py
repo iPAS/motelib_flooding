@@ -284,10 +284,14 @@ def script():
     sleep(3)
 
     sleep(3)
+    NODE_SRC = 8
+    print '<<<--- Gateway tries sending to make noises around node #%d --->>>' % NODE_SRC
+    simgw0.send_to(dest=0, msg=payload)
+    sleep(3)
     print '<<<--- Node starts sending as an originSource --->>>'
     for i in range(4):
         print '<<<--- push %d --->>>' % i
-        nodes_push_button([8])
+        nodes_push_button([NODE_SRC])
         sleep(4)
 
     sleep(10)

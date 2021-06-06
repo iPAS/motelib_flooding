@@ -8,6 +8,19 @@ static on_rx_sink on_approach_sink;  // Handler called if being the last node in
 
 
 /**
+ * Update sending neighbor's information.
+ */
+static
+void update_neighbor_info(Address source)
+{
+    neighbor_t *nb = neighbor_find(source);
+    RadioRxStatus sts;
+    radioGetRxStatus(&sts);
+    nb->rssi = sts.rssi;
+}
+
+
+/**
  * Broadcast the message
  */
 static
@@ -26,17 +39,13 @@ bool broadcast(void *message, uint8_t len)
 static
 void on_receive(Address source, MessageType type, void *message, uint8_t len)
 {
+    update_neighbor_info(source);  // Update date about our neighbor 'source'
+
     RoutingHeader *hdr = (RoutingHeader*)message;
 
     delivery_history_t *hist;
     hist = (hdr->originSource == getAddress())? NULL : hist_find(hdr);  // Historical data based on the 'originSource'.
                                                                         // It could be NULL if the 'originSource' is here.
-
-    neighbor_t *nb;
-    nb = neighbor_find(source);  // Update date about our neighbor 'source'
-    RadioRxStatus sts;
-    radioGetRxStatus(&sts);
-    nb->rssi = sts.rssi;
 
     // ------------------------------------------------------------------------
     if (type == FLOOD_MSG_TYPE)
@@ -219,7 +228,7 @@ bool flood_send_status_to(Address sink)
     neighbor_status_t status[MAX_NEIGHBOR];
     neighbor_status_t *sts = status;
     neighbor_t *nb = neighbor_table();
-    uint8_t cnt, i;
+    uint8_t i, cnt;
     for (i = 0, cnt = 0; i < MAX_NEIGHBOR; i++, nb++)
     {
         if (nb->addr != BROADCAST_ADDR)
@@ -230,7 +239,6 @@ bool flood_send_status_to(Address sink)
             cnt++;
         }
     }
-
     return flood_send_to(sink, status, cnt*sizeof(neighbor_status_t));
 }
 
