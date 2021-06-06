@@ -127,7 +127,10 @@ class MyMote(Mote):
             self.new_parent = int(txt[5])
             self.origin = int(txt[8])
             if self.old_parent != 0xFFFF:
-                sim.scene.dellink(self.id, self.old_parent, line_styles[self.origin]['name'])
+                try:
+                    sim.scene.dellink(self.id, self.old_parent, line_styles[self.origin]['name'])
+                except:
+                    pass
             sim.scene.addlink(self.id, self.new_parent, line_styles[self.origin]['name'])
 
         elif msg.find('Change seqNo from') >= 0:  # In on_receive(..)
@@ -210,6 +213,9 @@ def script():
         sim.scene.nodelabel(n, node_label_2l(n, 0))
 
     # Get started!
+    SEPARATOR = '\n<<<' + '-' * 40
+    
+    print SEPARATOR
     print '<<< Script gets started >>>'
     for gw in gws:
         simgws.append(MySimGateway('localhost:{}'.format(gw.listen_port), sim=sim))
@@ -249,11 +255,13 @@ def script():
 
 
     ###############
+    print SEPARATOR
     print '<<<--- Flood routing protocol testing : node_label ==> (idno, seqno, besthop) --->>>'
 
     simgw0 = simgws[0]
     simgw1 = simgws[1]
 
+    print SEPARATOR
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
 
@@ -268,12 +276,14 @@ def script():
 
     nodes_down([7, 8])
 
+    print SEPARATOR
     print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
     set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     sleep(1)
     simgw1.send_to(dest=0, msg=payload)
     sleep(3)
 
+    print SEPARATOR
     print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
     set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     nodes_down([7, 8])
@@ -281,20 +291,24 @@ def script():
     nodes_up([7, 8])
     sleep(2)
     simgw1.send_to(dest=0, msg=payload)
-    sleep(3)
+    sleep(5)
 
-    sleep(3)
     NODE_SRC = 8
+    print SEPARATOR
     print '<<<--- Gateway tries sending to make noises around node #%d --->>>' % NODE_SRC
     simgw0.send_to(dest=0, msg=payload)
-    sleep(3)
+    sleep(5)
+
+    print SEPARATOR
     print '<<<--- Node starts sending as an originSource --->>>'
     for i in range(4):
+        print
         print '<<<--- push %d --->>>' % i
         nodes_push_button([NODE_SRC])
         sleep(4)
 
     sleep(10)
+    print SEPARATOR
     raw_input('Press ENTER key to quit...')
     sim.tkplot.tk.quit()
 
