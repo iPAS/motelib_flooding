@@ -22,6 +22,7 @@
         "unordered_map": "c",
         "vector": "c",
         "uart.h": "c",
-        "bind.h": "c"
+        "bind.h": "c",
+        "neighbor.h": "c"
     }
 }
