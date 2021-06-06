@@ -31,6 +31,8 @@ neighbor_t *neighbor_find(Address addr)
     uint32_t ts_oldest = 0,
              now = zTimerTicks();
     uint8_t i;
+
+    // Find in the table
     for (i = 0; i < MAX_NEIGHBOR; i++, nb++)
     {
         if (nb->addr == BROADCAST_ADDR)
@@ -47,8 +49,13 @@ neighbor_t *neighbor_find(Address addr)
             }
 
             // Not found, find the oldest
-            if (nb->timestamp > now)
-                nb->timestamp = 0;  // Reset if overflow
+            if (nb->timestamp > now)  // Long-time no see, forget it.
+            {
+                nb->addr = BROADCAST_ADDR;
+                nb->timestamp = 0;
+                nb_free = nb;  // Memorize a free slot.
+                continue;
+            }
 
             if (nb->timestamp >= ts_oldest)
             {
