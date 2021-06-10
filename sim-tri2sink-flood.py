@@ -213,9 +213,8 @@ def script():
         sim.scene.nodelabel(n, node_label_2l(n, 0))
 
     # Get started!
-    SEPARATOR = '\n<<<' + '-' * 40
-    
-    print SEPARATOR
+    SEPARATOR = '\n<<<' + '-' * 80
+
     print '<<< Script gets started >>>'
     for gw in gws:
         simgws.append(MySimGateway('localhost:{}'.format(gw.listen_port), sim=sim))
@@ -261,44 +260,42 @@ def script():
     simgw0 = simgws[0]
     simgw1 = simgws[1]
 
+
     print SEPARATOR
     print '<<<--- Up all nodes --->>>'
     nodes_up(range(len(nodes)))
-
+    sleep(1)
     simgw0.send_to(dest=0, msg=payload)
-    sleep(3)
+    sleep(4)
     simgw1.send_to(dest=0, msg=payload)
-    sleep(3)
+    sleep(4)
     simgw0.send_to(dest=0, msg=payload)
-    sleep(3)
+    sleep(4)
     simgw1.send_to(dest=0, msg=payload)
-    sleep(3)
+    sleep(10)
 
-    nodes_down([7, 8])
 
     print SEPARATOR
-    print '<<<--- Gateway is dead then alive / seqNo is reset --->>>'
+    print '<<<--- Node: #7 #8 are dead / Gateway is dead then alive / seqNo is reset --->>>'
+    nodes_down([7, 8])
     set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
     sleep(1)
-    simgw1.send_to(dest=0, msg=payload)
-    sleep(3)
+    simgw1.send_to(dest=0, msg=payload)  # Send out but no route
+    sleep(10)
+
 
     print SEPARATOR
-    print '<<<--- Gateway and its adjustcent node are rebooted / seqNo is reset --->>>'
-    set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
-    nodes_down([7, 8])
-    sleep(1)
+    print '<<<--- Gateway and its adjustcent nodes #7,8 are rebooted / seqNo is reset --->>>'
     nodes_up([7, 8])
-    sleep(2)
+    set_simgw_sequence(simgw1, 0)  # Emulate Gateway dead
+    sleep(1)
     simgw1.send_to(dest=0, msg=payload)
-    sleep(5)
+    sleep(4)
+    simgw1.send_to(dest=0, msg=payload)
+    sleep(10)
+
 
     NODE_SRC = 8
-    print SEPARATOR
-    print '<<<--- Gateway tries sending to make noises around node #%d --->>>' % NODE_SRC
-    simgw0.send_to(dest=0, msg=payload)
-    sleep(5)
-
     print SEPARATOR
     print '<<<--- Node starts sending as an originSource --->>>'
     for i in range(4):
