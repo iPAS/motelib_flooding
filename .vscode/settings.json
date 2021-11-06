@@ -24,5 +24,8 @@
         "uart.h": "c",
         "bind.h": "c",
         "neighbor.h": "c"
-    }
+    },
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true,
+    "python.languageServer": "Jedi"
 }
