@@ -354,12 +354,13 @@ if __name__ == '__main__':
         gws.append(gw)
 
     ids_to_styles = [gws[0].id, gws[1].id, nodes[-1].id]
-    for x, id in enumerate(ids_to_styles):
+    for x, i in enumerate(ids_to_styles):
         sim.scene.linestyle(line_styles[x]['name'],
                             color = line_styles[x]['color'],
                             dash = ( 1, 2, 2, 2 ),
                             arrow = 'head')
-        line_styles[id] = line_styles.pop(x)
+        line_styles[i] = line_styles.pop(x)
+
 
     # Waitting...
     sleep(1)
